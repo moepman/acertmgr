@@ -58,16 +58,25 @@ def cert_isValid(crt_file, ttl_days):
 # @param settings the domain's configuration options
 def cert_get(domain, settings):
 	key_file = ACME_DIR + "server.key"
+	if not os.path.exists(key_file):
+		raise "The server key file is missing!"
+
 	csr_file = "/tmp/%s.csr" % domain
 	crt_file = "/tmp/%s.crt" % domain
+	if os.path.lexists(csr_file) or os.path.lexists(crt_file):
+		raise "A temporary file already exists!"
 
 	print("Getting certificate for %s." % domain)
 	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
+
+	# TODO prepare everything for ACME challanges
 
 	# TODO run acme_tiny
 	# TODO check if resulting certificate is valid
 
 	os.remove(csr_file)
+
+	# TODO store resulting certificate at final location
 
 
 # @brief put new certificate in plcae
@@ -84,7 +93,7 @@ def cert_put(domain, settings):
 # @param defaults the default configuration
 # @return the augmented configuration
 def complete_config(domainconfig, defaults):
-	for name, value in defaults.iteritems():
+	for name, value in defaults.items():
 		if name not in domainconfig:
 			domainconfig[name] = value
 	return domainconfig
@@ -110,13 +119,14 @@ if __name__ == "__main__":
 	#print(str(config))
 
 	# check certificate validity and obtain/renew certificates if needed
-	for domain, domaincfgs in config['domains'].iteritems():
+	for domain, domaincfgs in config['domains'].items():
+		# skip domains without any output files
+		if domaincfgs is None:
+			continue
 		crt_file = ACME_DIR + "%s.crt" % domain
 		ttl_days = int(config.get('ttl_days', 15))
 		if not cert_isValid(crt_file, ttl_days):
-			# don't get certs for domains without any output files
-			if domaincfgs:
-				cert_get(domain, config)
-				for domaincfg in domaincfgs:
-					cfg = complete_config(domaincfg, config['defaults'])
-					cert_put(domain, cfg)
+			cert_get(domain, config)
+			for domaincfg in domaincfgs:
+				cfg = complete_config(domaincfg, config['defaults'])
+				cert_put(domain, cfg)
