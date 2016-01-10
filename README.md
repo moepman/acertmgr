@@ -39,3 +39,11 @@ mail.example.com:
   perm: '400'
   notify: '/etc/init.d/dovecot reload'
 ```
+
+Security
+--------
+
+Please keep the following in mind when using this software:
+
+  * DO read the source code, since it is intended to be run as root
+  * Make sure that your configuration files are NOT writable by other users - arbitrary commands can be executed after updating certificates
