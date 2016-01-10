@@ -21,7 +21,10 @@ All configuration files use yaml syntax.
 
 mode: webdir
 #mode: standalone
-webdir: /var/www/challenges/
+webdir: /var/www/acme-challenge/
+
+defaults:
+  format: split
 ```
 
   * Example domain configuration file:
