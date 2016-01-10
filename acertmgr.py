@@ -107,14 +107,16 @@ if __name__ == "__main__":
 		if config_file.endswith(".conf"):
 			with open(ACME_CONFD + config_file) as config_fd:
 				config['domains'].update(yaml.load(config_fd))
-	print(str(config))
+	#print(str(config))
 
 	# check certificate validity and obtain/renew certificates if needed
 	for domain, domaincfgs in config['domains'].iteritems():
 		crt_file = ACME_DIR + "%s.crt" % domain
 		ttl_days = int(config.get('ttl_days', 15))
 		if not cert_isValid(crt_file, ttl_days):
-			cert_get(domain, config)
-			for domaincfg in domaincfgs:
-				cfg = complete_config(domaincfg, config['defaults'])
-				cert_put(domain, cfg)
+			# don't get certs for domains without any output files
+			if domaincfgs:
+				cert_get(domain, config)
+				for domaincfg in domaincfgs:
+					cfg = complete_config(domaincfg, config['defaults'])
+					cert_put(domain, cfg)
