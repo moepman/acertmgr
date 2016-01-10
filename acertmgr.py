@@ -20,11 +20,10 @@ ACME_CONFD=ACME_DIR + "domains.d/"
 
 
 # @brief check whether existing certificate is still valid or expiring soon
-# @param domain string containing the domain name
-# @param settings the domain's configuration options
-# @return True if certificate is still valid for a while, False otherwise
-def cert_isValid(domain, settings):
-	crt_file = ACME_DIR + domain + ".crt"
+# @param crt_file string containing the path to the certificate file
+# @param ttl_days the minimum amount of days for which the certificate must be valid
+# @return True if certificate is still valid for at least ttl_days, False otherwise
+def cert_isValid(crt_file, ttl_days):
 	if not os.path.isfile(crt_file):
 		return False
 	else:
@@ -47,7 +46,7 @@ def cert_isValid(domain, settings):
 		if valid_from > now:
 			raise "A Certificate seems to be from the future, something seems wrong!"
 
-		expiry_limit = now + dateutil.relativedelta.relativedelta(days=+15)
+		expiry_limit = now + dateutil.relativedelta.relativedelta(days=+ttl_days)
 		if valid_to < expiry_limit:
 			return False
 
@@ -59,15 +58,17 @@ def cert_isValid(domain, settings):
 # @param settings the domain's configuration options
 def cert_get(domain, settings):
 	key_file = ACME_DIR + "server.key"
-
 	csr_file = "/tmp/%s.csr" % domain
-	print("Getting certificate for %s." % domain)
+	crt_file = "/tmp/%s.crt" % domain
 
+	print("Getting certificate for %s." % domain)
 	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
 	# TODO run acme_tiny
 	# TODO check if resulting certificate is valid
-	# TODO delete temporary files
+
+	os.remove(csr_file)
+
 	# TODO copy cert w/ correct permissions
 	# TODO restart/reload service(s)
 
@@ -107,5 +108,7 @@ if __name__ == "__main__":
 	# check certificate validity and obtain/renew certificates if needed
 	for domain, domaincfg in config['domains'].iteritems():
 		cfg = complete_config(domaincfg, config['defaults'])
-		if not cert_isValid(domain, cfg):
+		crt_file = ACME_DIR + "%s.crt" % domain
+		ttl_days = int(config.get('ttl_days', 15))
+		if not cert_isValid(crt_file, ttl_days):
 			cert_get(domain, cfg)
