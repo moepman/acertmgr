@@ -51,6 +51,7 @@ def cert_isValid(domain, settings):
 
 def cert_get(domain, settings):
 	key_file = ACME_DIR + "server.key"
+
 	csr_file = "/tmp/%s.csr" % domain
 	print("Getting certificate for %s." % domain)
 
@@ -58,28 +59,31 @@ def cert_get(domain, settings):
 
 	# TODO run acme_tiny
 	# TODO check if resulting certificate is valid
+	# TODO delete temporary files
 	# TODO copy cert w/ correct permissions
 	# TODO restart/reload service(s)
 
 
 if __name__ == "__main__":
-	# load configuration
-	with open(ACME_CONF) as config_fd:
-		config = yaml.load(config_fd)
-		if not config:
-			config = {}
-		if 'domains' not in config:
-			config['domains'] = {}
+	# load global configuration
+	if os.path.isfile(ACME_CONF):
+		with open(ACME_CONF) as config_fd:
+			config = yaml.load(config_fd)
+	if not config:
+		config = {}
+	if 'domains' not in config:
+		config['domains'] = {}
+
+	# load domain configuration
 	for config_file in os.listdir(ACME_CONFD):
 		if config_file.endswith(".conf"):
 			with open(ACME_CONFD + config_file) as config_fd:
 				config['domains'].update(yaml.load(config_fd))
 	#print(str(config))
 
-	# fill up configuration with defaults
-	# TODO
+	# TODO fill up configuration with defaults
 
-	# check certificate validity
+	# check certificate validity and obtain/renew certificates if needed
 	for domain in config['domains']:
 		if not cert_isValid(domain, config['domains'][domain]):
 			cert_get(domain, config['domains'][domain])

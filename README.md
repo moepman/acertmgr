@@ -20,6 +20,7 @@ All configuration files use yaml syntax.
 ---
 
 mode: webdir
+#mode: standalone
 webdir: /var/www/challenges/
 ```
 
@@ -32,7 +33,9 @@ mail.example.com:
 - user: postfix
   group: postfix
   perm: '400'
+  notify: '/etc/init.d/postfix reload'
 - user: dovecot
   group: dovecot
   perm: '400'
+  notify: '/etc/init.d/dovecot reload'
 ```
