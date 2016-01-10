@@ -16,20 +16,23 @@ The main configuration is read from `/etc/acme/acme.conf`, domains for which cer
 All configuration files use yaml syntax.
 
   * Example global configuration file:
+```yaml
+---
 
-      ---
-      
-      mode: webdir
-      webdir: /var/www/challenges/
+mode: webdir
+webdir: /var/www/challenges/
+```
 
   * Example domain configuration file:
 
-      ---
-      
-      mail.example.com:
-      - user: postfix
-        group: postfix
-        perm: '400'
-      - user: dovecot
-        group: dovecot
-        perm: '400'
+```yaml
+---
+
+mail.example.com:
+- user: postfix
+  group: postfix
+  perm: '400'
+- user: dovecot
+  group: dovecot
+  perm: '400'
+```
