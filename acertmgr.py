@@ -6,7 +6,6 @@
 
 
 import datetime
-import dateutil
 import dateutil.parser
 import dateutil.relativedelta
 import os
@@ -20,6 +19,10 @@ ACME_CONF=ACME_DIR + "acme.conf"
 ACME_CONFD=ACME_DIR + "domains.d/"
 
 
+# @brief check whether existing certificate is still valid or expiring soon
+# @param domain string containing the domain name
+# @param settings the domain's configuration options
+# @return True if certificate is still valid for a while, False otherwise
 def cert_isValid(domain, settings):
 	crt_file = ACME_DIR + domain + ".crt"
 	if not os.path.isfile(crt_file):
@@ -40,15 +43,20 @@ def cert_isValid(domain, settings):
 		else:
 			raise "No notAfter date found, something seems wrong!"
 
-		if valid_from > datetime.datetime.now():
+		now = datetime.datetime.now()
+		if valid_from > now:
 			raise "A Certificate seems to be from the future, something seems wrong!"
 
-		if valid_to < datetime.datetime.now() + dateutil.relativedelta.relativedelta(days=+15):
+		expiry_limit = now + dateutil.relativedelta.relativedelta(days=+15)
+		if valid_to < expiry_limit:
 			return False
 
 		return True
 
 
+# @brief fetch new certificate from letsencrypt
+# @param domain string containing the domain name
+# @param settings the domain's configuration options
 def cert_get(domain, settings):
 	key_file = ACME_DIR + "server.key"
 
@@ -64,6 +72,17 @@ def cert_get(domain, settings):
 	# TODO restart/reload service(s)
 
 
+# @brief augment configuration with defaults
+# @param domainconfig the domain configuration
+# @param defaults the default configuration
+# @return the augmented configuration
+def complete_config(domainconfig, defaults):
+	for name, value in defaults.iteritems():
+		if name not in domainconfig:
+			domainconfig[name] = value
+	return domainconfig
+
+
 if __name__ == "__main__":
 	# load global configuration
 	if os.path.isfile(ACME_CONF):
@@ -73,6 +92,8 @@ if __name__ == "__main__":
 		config = {}
 	if 'domains' not in config:
 		config['domains'] = {}
+	if 'defaults' not in config:
+		config['defaults'] = {}
 
 	# load domain configuration
 	for config_file in os.listdir(ACME_CONFD):
@@ -84,6 +105,7 @@ if __name__ == "__main__":
 	# TODO fill up configuration with defaults
 
 	# check certificate validity and obtain/renew certificates if needed
-	for domain in config['domains']:
-		if not cert_isValid(domain, config['domains'][domain]):
-			cert_get(domain, config['domains'][domain])
+	for domain, domaincfg in config['domains'].iteritems():
+		cfg = complete_config(domaincfg, config['defaults'])
+		if not cert_isValid(domain, cfg):
+			cert_get(domain, cfg)
