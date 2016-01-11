@@ -80,12 +80,16 @@ def cert_get(domain, settings):
 		raise FileExistsError("A temporary file already exists!")
 
 
-	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
+	try:
+		cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
-	# get certificate
-	crt = acme_tiny.get_crt(acc_file, csr_file, CHALLENGE_DIR, CA = LE_CA)
-	with open(crt_file, "w") as crt_fd:
-		crt_fd.write(crt)
+		# get certificate
+		crt = acme_tiny.get_crt(acc_file, csr_file, CHALLENGE_DIR, CA = LE_CA)
+		with open(crt_file, "w") as crt_fd:
+			crt_fd.write(crt)
+	except Exception:
+		os.remove(csr_file)
+		raise
 
 	# TODO check if resulting certificate is valid
 
