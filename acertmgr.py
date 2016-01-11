@@ -21,6 +21,11 @@ ACME_CONFD=ACME_DIR + "domains.d/"
 CHALLENGE_DIR="/var/www/acme/"
 LE_CA="https://acme-staging.api.letsencrypt.org"
 
+
+class InvalidCertificateError(Exception):
+	pass
+
+
 # @brief check whether existing certificate is still valid or expiring soon
 # @param crt_file string containing the path to the certificate file
 # @param ttl_days the minimum amount of days for which the certificate must be valid
@@ -36,17 +41,17 @@ def cert_isValid(crt_file, ttl_days):
 		if m:
 			valid_from = dateutil.parser.parse(m.group(1), ignoretz=True)
 		else:
-			raise "No notBefore date found, something seems wrong!"
+			raise InvalidCertificateError("No notBefore date found")
 
 		m = re.search("notAfter=(.+)", vc)
 		if m:
 			valid_to = dateutil.parser.parse(m.group(1), ignoretz=True)
 		else:
-			raise "No notAfter date found, something seems wrong!"
+			raise InvalidCertificateError("No notAfter date found")
 
 		now = datetime.datetime.now()
 		if valid_from > now:
-			raise "A Certificate seems to be from the future, something seems wrong!"
+			raise InvalidCertificateError("Certificate seems to be from the future")
 
 		expiry_limit = now + dateutil.relativedelta.relativedelta(days=+ttl_days)
 		if valid_to < expiry_limit:
@@ -62,25 +67,29 @@ def cert_get(domain, settings):
 	print("Getting certificate for %s." % domain)
 
 	key_file = ACME_DIR + "server.key"
-	if not os.path.exists(key_file):
-		raise "The server key file (%s) is missing!" % key_file
+	if not os.path.isfile(key_file):
+		raise FileNotFoundError("The server key file (%s) is missing!" % key_file)
 
 	acc_file = ACME_DIR + "account.key"
-	if not os.path.exists(acc_file):
-		raise "The account key file (%s) is missing!" % acc_file
+	if not os.path.isfile(acc_file):
+		raise FileNotFoundError("The account key file (%s) is missing!" % acc_file)
 
 	csr_file = "/tmp/%s.csr" % domain
 	crt_file = "/tmp/%s.crt" % domain
 	if os.path.lexists(csr_file) or os.path.lexists(crt_file):
-		raise "A temporary file already exists!"
+		raise FileExistsError("A temporary file already exists!")
 
 
-	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
+	try:
+		cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
-	# get certificate
-	crt = acme_tiny.get_crt(acc_file, csr_file, CHALLENGE_DIR, CA = LE_CA)
-	with open(crt_file, "w") as crt_fd:
-		crt_fd.write(crt)
+		# get certificate
+		crt = acme_tiny.get_crt(acc_file, csr_file, CHALLENGE_DIR, CA = LE_CA)
+		with open(crt_file, "w") as crt_fd:
+			crt_fd.write(crt)
+	except Exception:
+		os.remove(csr_file)
+		raise
 
 	# TODO check if resulting certificate is valid
 
