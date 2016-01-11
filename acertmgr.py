@@ -5,6 +5,7 @@
 # Copyright (c) Markus Hauschild, 2016.
 
 
+import acme_tiny
 import datetime
 import dateutil.parser
 import dateutil.relativedelta
@@ -17,8 +18,8 @@ import yaml
 ACME_DIR="/etc/acme/"
 ACME_CONF=ACME_DIR + "acme.conf"
 ACME_CONFD=ACME_DIR + "domains.d/"
-ACME_TINY="/opt/acme/acme_tiny.py"
-
+CHALLENGE_DIR="/var/www/acme/"
+LE_CA="https://acme-staging.api.letsencrypt.org"
 
 # @brief check whether existing certificate is still valid or expiring soon
 # @param crt_file string containing the path to the certificate file
@@ -69,17 +70,18 @@ def cert_get(domain, settings):
 		raise "The account key file (%s) is missing!" % acc_file
 
 	csr_file = "/tmp/%s.csr" % domain
-	if os.path.lexists(csr_file):
+	crt_file = "/tmp/%s.crt" % domain
+	if os.path.lexists(csr_file) or os.path.lexists(crt_file):
 		raise "A temporary file already exists!"
 
-	if not os.path.exists(ACME_TINY):
-		raise "acme_tiny (%s) is missing!" % ACME_TINY
-
-	crt_file = "/tmp/%s.crt" % domain
 
 	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
-	# TODO run acme_tiny
+	# get certificate
+	crt = acme_tiny.get_crt(acc_file, csr_file, CHALLENGE_DIR, CA = LE_CA)
+	with open(crt_file, "w") as crt_fd:
+		crt_fd.write(crt)
+
 	# TODO check if resulting certificate is valid
 
 	os.remove(csr_file)
