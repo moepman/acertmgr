@@ -62,11 +62,11 @@ def cert_get(domain, settings):
 	print("Getting certificate for %s." % domain)
 
 	key_file = ACME_DIR + "server.key"
-	if not os.path.exists(key_file):
+	if not os.path.isfile(key_file):
 		raise "The server key file (%s) is missing!" % key_file
 
 	acc_file = ACME_DIR + "account.key"
-	if not os.path.exists(acc_file):
+	if not os.path.isfile(acc_file):
 		raise "The account key file (%s) is missing!" % acc_file
 
 	csr_file = "/tmp/%s.csr" % domain
