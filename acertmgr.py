@@ -17,6 +17,7 @@ import yaml
 ACME_DIR="/etc/acme/"
 ACME_CONF=ACME_DIR + "acme.conf"
 ACME_CONFD=ACME_DIR + "domains.d/"
+ACME_TINY="/opt/acme/acme_tiny.py"
 
 
 # @brief check whether existing certificate is still valid or expiring soon
@@ -57,19 +58,26 @@ def cert_isValid(crt_file, ttl_days):
 # @param domain string containing the domain name
 # @param settings the domain's configuration options
 def cert_get(domain, settings):
+	print("Getting certificate for %s." % domain)
+
 	key_file = ACME_DIR + "server.key"
 	if not os.path.exists(key_file):
-		raise "The server key file is missing!"
+		raise "The server key file (%s) is missing!" % key_file
+
+	acc_file = ACME_DIR + "account.key"
+	if not os.path.exists(acc_file):
+		raise "The account key file (%s) is missing!" % acc_file
 
 	csr_file = "/tmp/%s.csr" % domain
-	crt_file = "/tmp/%s.crt" % domain
-	if os.path.lexists(csr_file) or os.path.lexists(crt_file):
+	if os.path.lexists(csr_file):
 		raise "A temporary file already exists!"
 
-	print("Getting certificate for %s." % domain)
-	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
+	if not os.path.exists(ACME_TINY):
+		raise "acme_tiny (%s) is missing!" % ACME_TINY
 
-	# TODO prepare everything for ACME challanges
+	crt_file = "/tmp/%s.crt" % domain
+
+	cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
 	# TODO run acme_tiny
 	# TODO check if resulting certificate is valid
