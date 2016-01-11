@@ -8,6 +8,13 @@ Running ACERTMGR
 
 The main file acertmgr.py is intended to be run regularly (e.g. as daily cron job) as root.
 
+Requirements
+------------
+
+Python (2.7+ and 3.4+ should work)
+PyYAML
+acme\_tiny (`acme_tiny.py` placed in `/opt/acme/acme_tiny.py`)
+
 Configuration
 -------------
 
