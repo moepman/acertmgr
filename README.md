@@ -13,7 +13,7 @@ Requirements
 
   * Python (2.7+ and 3.4+ should work)
   * PyYAML
-  * acme\_tiny (`acme_tiny.py` placed next to `acertmgr.py`)
+  * acme\_tiny (`acme_tiny.py` in $PYTHONHOME or $PYTHONPATH or placed next to `acertmgr.py`)
 
 Configuration
 -------------
