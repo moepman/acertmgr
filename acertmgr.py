@@ -12,6 +12,7 @@ import dateutil.relativedelta
 import os
 import re
 import subprocess
+import tempfile
 import yaml
 
 
@@ -19,6 +20,10 @@ ACME_DIR="/etc/acme/"
 ACME_CONF=ACME_DIR + "acme.conf"
 ACME_CONFD=ACME_DIR + "domains.d/"
 LE_CA="https://acme-staging.api.letsencrypt.org"
+
+
+class FileNotFoundError(OSError):
+    pass
 
 
 class InvalidCertificateError(Exception):
@@ -73,10 +78,8 @@ def cert_get(domain, settings):
 	if not os.path.isfile(acc_file):
 		raise FileNotFoundError("The account key file (%s) is missing!" % acc_file)
 
-	csr_file = "/tmp/%s.csr" % domain
-	crt_file = "/tmp/%s.crt" % domain
-	if os.path.lexists(csr_file) or os.path.lexists(crt_file):
-		raise FileExistsError("A temporary file already exists!")
+	_, csr_file = tempfile.mkstemp(".csr", "%s." % domain)
+	_, crt_file = tempfile.mkstemp(".crt", "%s." % domain)
 
 	challenge_dir = settings.get("webdir", "/var/www/acme-challenge/")
 	if not os.path.isdir(challenge_dir):
@@ -89,18 +92,19 @@ def cert_get(domain, settings):
 		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir, CA = LE_CA)
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
-	except Exception:
-		os.remove(csr_file)
-		raise
 
 	# TODO check if resulting certificate is valid
-
-	os.remove(csr_file)
-
 	# TODO store resulting certificate at final location
 
+	except Exception:
+		raise
 
-# @brief put new certificate in plcae
+	finally:
+		os.remove(csr_file)
+		os.remove(crt_file)
+
+
+# @brief put new certificate in place
 # @param domain string containing the domain name
 # @param settings the domain's configuration options
 def cert_put(domain, settings):
