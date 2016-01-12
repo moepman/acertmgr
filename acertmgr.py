@@ -11,6 +11,7 @@ import dateutil.parser
 import dateutil.relativedelta
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import yaml
@@ -93,11 +94,10 @@ def cert_get(domain, settings):
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
 
-	# TODO check if resulting certificate is valid
-	# TODO store resulting certificate at final location
-
-	except Exception:
-		raise
+		#  if resulting certificate is valid: store in final location
+		if cert_isValid(crt_file, 60):
+			crt_final = ACME_DIR + "%s.crt" % domain
+			shutil.copy2(crt_file, crt_final)
 
 	finally:
 		os.remove(csr_file)
