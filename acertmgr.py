@@ -18,7 +18,6 @@ import yaml
 ACME_DIR="/etc/acme/"
 ACME_CONF=ACME_DIR + "acme.conf"
 ACME_CONFD=ACME_DIR + "domains.d/"
-CHALLENGE_DIR="/var/www/acme/"
 LE_CA="https://acme-staging.api.letsencrypt.org"
 
 
@@ -79,12 +78,15 @@ def cert_get(domain, settings):
 	if os.path.lexists(csr_file) or os.path.lexists(crt_file):
 		raise FileExistsError("A temporary file already exists!")
 
+	challenge_dir = settings.get("webdir", "/var/www/acme-challenge/")
+	if not os.path.isdir(challenge_dir):
+		raise FileNotFoundError("Challenge directory (%s) does not exist!" % challenge_dir)
 
 	try:
 		cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
 		# get certificate
-		crt = acme_tiny.get_crt(acc_file, csr_file, CHALLENGE_DIR, CA = LE_CA)
+		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir, CA = LE_CA)
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
 	except Exception:
