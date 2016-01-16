@@ -108,9 +108,25 @@ def cert_get(domain, settings):
 # @param domain string containing the domain name
 # @param settings the domain's configuration options
 def cert_put(domain, settings):
-	# TODO copy cert w/ correct permissions
+	# TODO error handling
+	crt_user = settings['user']
+	crt_group = settings['group']
+	crt_perm = settings['perm']
+	crt_path = settings['path']
+	crt_format = settings['format']
+	crt_notify = settings['notify']
+
+	crt_final = ACME_DIR + "%s.crt" % domain
+
+	if crt_format == 'split':
+		# TODO copy key
+		# TODO copy crt
+		# TODO copy CA
+		# TODO set permissions
+	else:
+		# TODO error: unknown format
+
 	# TODO restart/reload service
-	pass
 
 
 # @brief augment configuration with defaults
