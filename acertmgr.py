@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 # Automated Certificate Manager using ACME
@@ -9,7 +9,9 @@ import acme_tiny
 import datetime
 import dateutil.parser
 import dateutil.relativedelta
+import grp
 import os
+import pwd
 import re
 import shutil
 import subprocess
@@ -20,7 +22,6 @@ import yaml
 ACME_DIR="/etc/acme/"
 ACME_CONF=ACME_DIR + "acme.conf"
 ACME_CONFD=ACME_DIR + "domains.d/"
-LE_CA="https://acme-staging.api.letsencrypt.org"
 
 
 class FileNotFoundError(OSError):
@@ -42,13 +43,13 @@ def cert_isValid(crt_file, ttl_days):
 		# check validity using OpenSSL
 		vc = subprocess.check_output(['openssl', 'x509', '-in', crt_file, '-noout', '-dates'])
 
-		m = re.search("notBefore=(.+)", vc)
+		m = re.search(b"notBefore=(.+)", vc)
 		if m:
 			valid_from = dateutil.parser.parse(m.group(1), ignoretz=True)
 		else:
 			raise InvalidCertificateError("No notBefore date found")
 
-		m = re.search("notAfter=(.+)", vc)
+		m = re.search(b"notAfter=(.+)", vc)
 		if m:
 			valid_to = dateutil.parser.parse(m.group(1), ignoretz=True)
 		else:
@@ -90,7 +91,7 @@ def cert_get(domain, settings):
 		cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
 
 		# get certificate
-		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir, CA = LE_CA)
+		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir)
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
 
@@ -113,20 +114,34 @@ def cert_put(domain, settings):
 	crt_group = settings['group']
 	crt_perm = settings['perm']
 	crt_path = settings['path']
-	crt_format = settings['format']
+	crt_format = settings['format'].split(",")
 	crt_notify = settings['notify']
 
+	key_file = ACME_DIR + "server.key"
 	crt_final = ACME_DIR + "%s.crt" % domain
 
-	if crt_format == 'split':
-		# TODO copy key
-		# TODO copy crt
-		# TODO copy CA
-		# TODO set permissions
-	else:
-		# TODO error: unknown format
+	with open(crt_path, "w+") as crt_fd:
+		for fmt in crt_format:
+			if fmt == "crt":
+				src_fd = open(crt_final, "r")
+				crt_fd.write(src_fd.read())
+				src_fd.close()
+			if fmt == "key":
+				src_fd = open(key_file, "r")
+				crt_fd.write(src_fd.read())
+				src_fd.close()
+			else:
+				# TODO error handling
+				pass
 
-	# TODO restart/reload service
+	# set owner and permissions
+	uid = pwd.getpwnam(crt_user).pw_uid
+	gid = grp.getgrnam(crt_group).gr_gid
+	os.chown(crt_path, uid, gid)
+	os.chmod(crt_path, int(crt_perm, 8))
+
+	# restart/reload service
+	subprocess.call(crt_notify.split())
 
 
 # @brief augment configuration with defaults
