@@ -12,6 +12,7 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.4+ should work)
+  * python-dateutil
   * PyYAML
   * acme\_tiny (`acme_tiny.py` in $PYTHONHOME or $PYTHONPATH or placed next to `acertmgr.py`)
 
@@ -31,7 +32,7 @@ mode: webdir
 webdir: /var/www/acme-challenge/
 
 defaults:
-  format: split
+  format: crt
 ```
 
   * Example domain configuration file:
@@ -40,11 +41,13 @@ defaults:
 ---
 
 mail.example.com:
-- user: postfix
+- path: /etc/postfix/ssl/mail.crt
+  user: postfix
   group: postfix
   perm: '400'
   notify: '/etc/init.d/postfix reload'
-- user: dovecot
+- path: /etc/dovecot/ssl/mail.crt
+  user: dovecot
   group: dovecot
   perm: '400'
   notify: '/etc/init.d/dovecot reload'
