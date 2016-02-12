@@ -16,6 +16,22 @@ Requirements
   * PyYAML
   * acme\_tiny (`acme_tiny.py` in $PYTHONHOME or $PYTHONPATH or placed next to `acertmgr.py`)
 
+Initial Setup
+-------------
+
+First, you need to provide two key files for acme-tiny:
+  * The account key is expected at `/etc/acme/account.key`
+  * The domain key is expected at `/etc/acme/server.key` (note: only one domain key is required for all domains used in the same instance of acertmgr)
+If you are missing these keys, you can create them using `openssl genrsa 4096 > /etc/acme/account.key` and `openssl genrsa 4096 > /etc/acme/server.key` respectively.
+Otherwise refer to the acme-timy documentation for how to reuse your existing keys.
+
+Second, you should decide which challenge mode you want to use with acertmgr
+  * webdir: In this mode, challenges are put into a directory, and served by an existing webserver. Make sure the target directory exists!
+  * standalone: In this mode, challenges are completed by acertmgr directly.
+    This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port.
+
+Finally, you need to setup the configuration files, as shown in the next section.
+
 Configuration
 -------------
 
@@ -29,6 +45,7 @@ All configuration files use yaml syntax.
 
 mode: webdir
 #mode: standalone
+#port: 13135
 webdir: /var/www/acme-challenge/
 
 defaults:
