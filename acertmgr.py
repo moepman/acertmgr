@@ -137,8 +137,14 @@ def cert_put(domain, settings):
 	# set owner and permissions
 	uid = pwd.getpwnam(crt_user).pw_uid
 	gid = grp.getgrnam(crt_group).gr_gid
-	os.chown(crt_path, uid, gid)
-	os.chmod(crt_path, int(crt_perm, 8))
+	try:
+		os.chown(crt_path, uid, gid)
+	except OSError:
+		print('Warning: Could not set certificate file ownership!')
+	try:
+		os.chmod(crt_path, int(crt_perm, 8))
+	except OSError:
+		print('Warning: Could not set certificate file permissions!')
 
 	# restart/reload service
 	subprocess.call(crt_notify.split())
