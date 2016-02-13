@@ -35,7 +35,7 @@ ACME_CONFD=ACME_DIR + "domains.d/"
 
 
 class FileNotFoundError(OSError):
-    pass
+	pass
 
 
 class InvalidCertificateError(Exception):
