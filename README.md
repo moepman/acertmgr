@@ -58,16 +58,23 @@ defaults:
 ---
 
 mail.example.com:
+- path: /etc/postfix/ssl/mail.key
+  user: postfix
+  group: postfix
+  perm: '400'
+  format: key
+  action: '/etc/init.d/postfix reload'
 - path: /etc/postfix/ssl/mail.crt
   user: postfix
   group: postfix
   perm: '400'
-  notify: '/etc/init.d/postfix reload'
+  format: crt
+  action: '/etc/init.d/postfix reload'
 - path: /etc/dovecot/ssl/mail.crt
   user: dovecot
   group: dovecot
   perm: '400'
-  notify: '/etc/init.d/dovecot reload'
+  action: '/etc/init.d/dovecot reload'
 ```
 
 Security

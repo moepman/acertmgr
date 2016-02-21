@@ -162,6 +162,7 @@ def cert_get(domain, settings):
 # @brief put new certificate in place
 # @param domain string containing the domain name
 # @param settings the domain's configuration options
+# @return the action to be executed after the certificate update
 def cert_put(domain, settings):
 	# TODO error handling
 	crt_user = settings['user']
@@ -169,7 +170,7 @@ def cert_put(domain, settings):
 	crt_perm = settings['perm']
 	crt_path = settings['path']
 	crt_format = settings['format'].split(",")
-	crt_notify = settings['notify']
+	crt_action = settings['action']
 
 	key_file = ACME_DIR + "server.key"
 	crt_final = ACME_DIR + "%s.crt" % domain
@@ -185,7 +186,7 @@ def cert_put(domain, settings):
 				crt_fd.write(src_fd.read())
 				src_fd.close()
 			else:
-				# TODO error handling
+				print()
 				pass
 
 	# set owner and permissions
@@ -200,8 +201,7 @@ def cert_put(domain, settings):
 	except OSError:
 		print('Warning: Could not set certificate file permissions!')
 
-	# restart/reload service
-	subprocess.call(crt_notify.split())
+	return crt_action
 
 
 # @brief augment configuration with defaults
@@ -232,7 +232,9 @@ if __name__ == "__main__":
 		if config_file.endswith(".conf"):
 			with open(ACME_CONFD + config_file) as config_fd:
 				config['domains'].update(yaml.load(config_fd))
-	#print(str(config))
+
+	# post-update actions (run only once)
+	actions = set()
 
 	# check certificate validity and obtain/renew certificates if needed
 	for domain, domaincfgs in config['domains'].items():
@@ -246,3 +248,7 @@ if __name__ == "__main__":
 			for domaincfg in domaincfgs:
 				cfg = complete_config(domaincfg, config['defaults'])
 				cert_put(domain, cfg)
+
+		# run post-update actions
+		for action in actions:
+			subprocess.call(action.split())
