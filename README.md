@@ -47,6 +47,7 @@ mode: webdir
 #mode: standalone
 #port: 13135
 webdir: /var/www/acme-challenge/
+cafile: /etc/acme/letencrypt_ca.crt
 
 defaults:
   format: crt
