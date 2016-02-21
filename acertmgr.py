@@ -165,6 +165,7 @@ def cert_get(domain, settings):
 # @return the action to be executed after the certificate update
 def cert_put(domain, settings):
 	# TODO error handling
+	ca_file = settings.get("cafile", "")
 	crt_user = settings['user']
 	crt_group = settings['group']
 	crt_perm = settings['perm']
@@ -185,7 +186,12 @@ def cert_put(domain, settings):
 				src_fd = open(key_file, "r")
 				crt_fd.write(src_fd.read())
 				src_fd.close()
-			# TODO fmt == "ca":
+			if fmt == "ca":
+				if not os.path.isfile(ca_file):
+					raise FileNotFoundError("The server key file (%s) is missing!" % ca_file)
+				src_fd = open(ca_file, "r")
+				crt_fd.write(src_fd.read())
+				src_fd.close()
 			else:
 				# TODO error handling
 				pass
