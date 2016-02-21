@@ -185,8 +185,9 @@ def cert_put(domain, settings):
 				src_fd = open(key_file, "r")
 				crt_fd.write(src_fd.read())
 				src_fd.close()
+			# TODO fmt == "ca":
 			else:
-				print()
+				# TODO error handling
 				pass
 
 	# set owner and permissions
