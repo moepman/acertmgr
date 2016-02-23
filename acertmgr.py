@@ -216,9 +216,10 @@ def cert_put(domain, settings):
 # @param defaults the default configuration
 # @return the augmented configuration
 def complete_config(domainconfig, defaults):
-	for name, value in defaults.items():
-		if name not in domainconfig:
-			domainconfig[name] = value
+	if defaults:
+		for name, value in defaults.items():
+			if name not in domainconfig:
+				domainconfig[name] = value
 	return domainconfig
 
 
