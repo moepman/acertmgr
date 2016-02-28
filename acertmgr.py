@@ -147,7 +147,17 @@ def cert_get(domain, settings):
 		server_thread.start()
 
 	try:
-		cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
+		allnames = domain.split(' ')
+		if len(allnames) == 1:
+			cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
+		else:
+			cnt = 0
+			altnames = []
+			for alias in allnames[1:]
+				cnt = cnt + 1
+				altnames.append('DNS.%d=%s' % cnt, alias)
+			subject = '/CN=%s subjectAltName=%s' % allnames[0], ','.join(altnames)
+			cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-reqexts', 'SAN', '-subj', subject])
 
 		# get certificate
 		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir)
