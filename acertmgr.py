@@ -265,7 +265,7 @@ if __name__ == "__main__":
 		for domaincfg in domaincfgs:
 			cfg = complete_config(domaincfg, config['defaults'])
 			if not target_isCurrent(cfg['path'], crt_file):
-				cert_put(domain, cfg)
+				actions.add(cert_put(domain, cfg))
 
 		# run post-update actions
 		for action in actions:
