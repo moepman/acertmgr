@@ -72,6 +72,15 @@ class ACMERequestHandler(SimpleHTTPRequestHandler):
 def start_standalone(server):
 	server.serve_forever()
 
+# @brief check whether existing target file is still valid or source crt has been updated
+# @param target string containing the path to the target file
+# @param crt_file string containing the path to the certificate file
+# @return True if target file is at least as new as the certificate, False otherwise
+def target_isCurrent(target, crt_file):
+	target_date = os.path.getmtime(target)
+	crt_date = os.path.getmtime(crt_file)
+	return target_date >= crt_date
+
 # @brief check whether existing certificate is still valid or expiring soon
 # @param crt_file string containing the path to the certificate file
 # @param ttl_days the minimum amount of days for which the certificate must be valid
@@ -230,22 +239,22 @@ if __name__ == "__main__":
 			config = yaml.load(config_fd)
 	if not config:
 		config = {}
-	if 'domains' not in config:
-		config['domains'] = {}
 	if 'defaults' not in config:
 		config['defaults'] = {}
 
+	config['domains'] = []
 	# load domain configuration
 	for config_file in os.listdir(ACME_CONFD):
 		if config_file.endswith(".conf"):
 			with open(ACME_CONFD + config_file) as config_fd:
-				config['domains'].update(yaml.load(config_fd))
+				for entry in yaml.load(config_fd).items():
+					config['domains'].append(entry)
 
 	# post-update actions (run only once)
 	actions = set()
 
 	# check certificate validity and obtain/renew certificates if needed
-	for domain, domaincfgs in config['domains'].items():
+	for domain, domaincfgs in config['domains']:
 		# skip domains without any output files
 		if domaincfgs is None:
 			continue
@@ -253,8 +262,9 @@ if __name__ == "__main__":
 		ttl_days = int(config.get('ttl_days', 15))
 		if not cert_isValid(crt_file, ttl_days):
 			cert_get(domain, config)
-			for domaincfg in domaincfgs:
-				cfg = complete_config(domaincfg, config['defaults'])
+		for domaincfg in domaincfgs:
+			cfg = complete_config(domaincfg, config['defaults'])
+			if not target_isCurrent(cfg['path'], crt_file):
 				cert_put(domain, cfg)
 
 		# run post-update actions
