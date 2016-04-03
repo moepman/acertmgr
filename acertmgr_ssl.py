@@ -45,7 +45,7 @@ def cert_request(names, key_data):
 	req = crypto.X509Req()
 	req.get_subject().commonName = names[0]
 	entries = ['DNS:'+name for name in names]
-	extensions = [crypto.X509Extension('subjectAltName', False, ', '.join(entries))]
+	extensions = [crypto.X509Extension('subjectAltName'.encode('utf8'), False, ', '.join(entries).encode('utf8'))]
 	req.add_extensions(extensions)
 	key = crypto.load_privatekey(crypto.FILETYPE_PEM, key_data)
 	req.set_pubkey(key)
@@ -75,7 +75,7 @@ def get_crt_from_csr(account_key_file, csr, domains, acme_dir, CA=DEFAULT_CA):
 	account_key = crypto.load_privatekey(crypto.FILETYPE_PEM, account_key_data)
 	proc = subprocess.Popen(['openssl', 'rsa', '-modulus', '-noout', '-text'],
 		stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	out, err = proc.communicate(account_key_data)
+	out, err = proc.communicate(account_key_data.encode('utf8'))
 	if proc.returncode != 0:
 		raise IOError("OpenSSL Error: {0}".format(err))
 	pub_exp, pub_hex = re.search(
@@ -191,5 +191,5 @@ def get_crt_from_csr(account_key_file, csr, domains, acme_dir, CA=DEFAULT_CA):
 	# return signed certificate!
 	print("Certificate signed!")
 	cert = crypto.load_certificate(crypto.FILETYPE_ASN1, result)
-	return crypto.dump_certificate(crypto.FILETYPE_PEM, cert)
+	return crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode('utf8')
 
