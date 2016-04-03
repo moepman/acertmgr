@@ -174,6 +174,8 @@ def complete_config(domainconfig, defaults):
 		for name, value in defaults.items():
 			if name not in domainconfig:
 				domainconfig[name] = value
+	if 'action' not in domainconfig:
+		domainconfig['action'] = None
 	return domainconfig
 
 
@@ -214,4 +216,5 @@ if __name__ == "__main__":
 
 		# run post-update actions
 		for action in actions:
-			subprocess.call(action.split())
+			if action is not None:
+				subprocess.call(action.split())
