@@ -14,7 +14,7 @@ Requirements
   * Python (2.7+ and 3.4+ should work)
   * python-dateutil
   * PyYAML
-  * acme\_tiny (`acme_tiny.py` in $PYTHONHOME or $PYTHONPATH or placed next to `acertmgr.py`)
+  * pyopenssl
 
 Initial Setup
 -------------
