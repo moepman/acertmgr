@@ -80,6 +80,28 @@ mail.example.com:
   group: dovecot
   perm: '400'
   action: '/etc/init.d/dovecot reload'
+
+jabber.example.com:
+- path: /etc/ejabberd/server.pem
+  user: jabber
+  group: jabber
+  perm: '400'
+  format: key,crt,ca
+  action: '/etc/init.d/ejabberd restart
+
+www.example.com:
+- path: /var/www/ssl/cert.pem
+  user: apache
+  group: apache
+  perm: '400'
+  action: '/etc/init.d/apache2 reload'
+  format: crt,ca
+- path: /var/www/ssl/key.pem
+  user: apache
+  group: apache
+  perm: '400'
+  action: '/etc/init.d/apache2 reload'
+  format: key
 ```
 
 Security
