@@ -6,9 +6,9 @@
 
 
 import acme_tiny
+import acertmgr_ssl
 import acertmgr_web
 import datetime
-import dateutil.parser
 import dateutil.relativedelta
 import grp
 import os
@@ -49,20 +49,7 @@ def cert_isValid(crt_file, ttl_days):
 	if not os.path.isfile(crt_file):
 		return False
 	else:
-		# check validity using OpenSSL
-		vc = subprocess.check_output(['openssl', 'x509', '-in', crt_file, '-noout', '-dates'])
-
-		m = re.search(b"notBefore=(.+)", vc)
-		if m:
-			valid_from = dateutil.parser.parse(m.group(1), ignoretz=True)
-		else:
-			raise InvalidCertificateError("No notBefore date found")
-
-		m = re.search(b"notAfter=(.+)", vc)
-		if m:
-			valid_to = dateutil.parser.parse(m.group(1), ignoretz=True)
-		else:
-			raise InvalidCertificateError("No notAfter date found")
+		(valid_from, valid_to) = acertmgr_ssl.cert_valid_times(crt_file)
 
 		now = datetime.datetime.now()
 		if valid_from > now:
@@ -104,19 +91,10 @@ def cert_get(domain, settings):
 		server = acertmgr_web.ACMEHTTPServer(port)
 		server.start()
 	try:
-		allnames = domain.split(' ')
-		if len(allnames) == 1:
-			cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-subj', '/CN=%s' % domain])
-		else:
-			cnt = 0
-			altnames = []
-			for alias in allnames[1:]
-				cnt = cnt + 1
-				altnames.append('DNS.%d=%s' % cnt, alias)
-			subject = '/CN=%s subjectAltName=%s' % allnames[0], ','.join(altnames)
-			cr = subprocess.check_output(['openssl', 'req', '-new', '-sha256', '-key', key_file, '-out', csr_file, '-reqexts', 'SAN', '-subj', subject])
-
-		# get certificate
+		key_fd = open(key_file, "r")
+		key = key_fd.read()
+		key_fd.close()
+		cr = acertmgr_ssl.cert_request(domains.split(), key)
 		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir)
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
