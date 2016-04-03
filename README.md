@@ -11,7 +11,7 @@ The main file acertmgr.py is intended to be run regularly (e.g. as daily cron jo
 Requirements
 ------------
 
-  * Python (2.7+ and 3.4+ should work)
+  * Python (2.7+ and 3.3+ should work)
   * python-dateutil
   * PyYAML
   * pyopenssl
@@ -19,13 +19,16 @@ Requirements
 Initial Setup
 -------------
 
-First, you need to provide two key files for acme-tiny:
+First, you need to provide two key files for the ACME protocol:
   * The account key is expected at `/etc/acme/account.key`
   * The domain key is expected at `/etc/acme/server.key` (note: only one domain key is required for all domains used in the same instance of acertmgr)
 If you are missing these keys, you can create them using `openssl genrsa 4096 > /etc/acme/account.key` and `openssl genrsa 4096 > /etc/acme/server.key` respectively.
-Otherwise refer to the acme-timy documentation for how to reuse your existing keys.
 
-Second, you should decide which challenge mode you want to use with acertmgr
+Secondly, you should download the letsencrypt CA certificate:
+  * wget -O /etc/acme/lets-encrypt-x3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem
+  * The path to this file must be entered in the configuration, see below.
+
+Thirdly, you should decide which challenge mode you want to use with acertmgr
   * webdir: In this mode, challenges are put into a directory, and served by an existing webserver. Make sure the target directory exists!
   * standalone: In this mode, challenges are completed by acertmgr directly.
     This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port.
@@ -47,10 +50,11 @@ mode: webdir
 #mode: standalone
 #port: 13135
 webdir: /var/www/acme-challenge/
-cafile: /etc/acme/letencrypt_ca.crt
 
 defaults:
   format: crt
+  cafile: /etc/acme/lets-encrypt-x3-cross-signed.pem
+
 ```
 
   * Example domain configuration file:
