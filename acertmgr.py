@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 # Automated Certificate Manager using ACME
-# Copyright (c) Markus Hauschild, 2016.
+# Copyright (c) Markus Hauschild & David Klaftenegger, 2016.
+# available under the ISC license, see LICENSE
 
 
 import acertmgr_ssl
