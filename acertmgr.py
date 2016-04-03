@@ -65,7 +65,8 @@ def cert_isValid(crt_file, ttl_days):
 # @brief fetch new certificate from letsencrypt
 # @param domain string containing the domain name
 # @param settings the domain's configuration options
-def cert_get(domain, settings):
+def cert_get(domains, settings):
+	domain = domains.split(' ')[0]
 	print("Getting certificate for %s." % domain)
 
 	key_file = ACME_DIR + "server.key"
@@ -127,7 +128,7 @@ def cert_put(domain, settings):
 	crt_action = settings['action']
 
 	key_file = ACME_DIR + "server.key"
-	crt_final = ACME_DIR + "%s.crt" % domain
+	crt_final = ACME_DIR + "%s.crt" % domain.split(' ')[0]
 
 	with open(crt_path, "w+") as crt_fd:
 		for fmt in crt_format:
@@ -198,18 +199,18 @@ if __name__ == "__main__":
 	actions = set()
 
 	# check certificate validity and obtain/renew certificates if needed
-	for domain, domaincfgs in config['domains']:
+	for domains, domaincfgs in config['domains']:
 		# skip domains without any output files
 		if domaincfgs is None:
 			continue
-		crt_file = ACME_DIR + "%s.crt" % domain
+		crt_file = ACME_DIR + "%s.crt" % domains.split(' ')[0]
 		ttl_days = int(config.get('ttl_days', 15))
 		if not cert_isValid(crt_file, ttl_days):
-			cert_get(domain, config)
+			cert_get(domains, config)
 		for domaincfg in domaincfgs:
 			cfg = complete_config(domaincfg, config['defaults'])
 			if not target_isCurrent(cfg['path'], crt_file):
-				actions.add(cert_put(domain, cfg))
+				actions.add(cert_put(domains, cfg))
 
 		# run post-update actions
 		for action in actions:
