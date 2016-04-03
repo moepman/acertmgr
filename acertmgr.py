@@ -6,6 +6,7 @@
 
 
 import acme_tiny
+import acertmgr_web
 import datetime
 import dateutil.parser
 import dateutil.relativedelta
@@ -16,18 +17,8 @@ import re
 import shutil
 import subprocess
 import tempfile
-import threading
 import yaml
 
-try:
-	from SimpleHTTPServer import SimpleHTTPRequestHandler
-except ImportError:
-	from http.server import SimpleHTTPRequestHandler
-
-try:
-	from SocketServer import TCPServer as HTTPServer
-except ImportError:
-	from http.server import HTTPServer
 
 ACME_DIR="/etc/acme/"
 ACME_CONF=ACME_DIR + "acme.conf"
@@ -40,37 +31,6 @@ class FileNotFoundError(OSError):
 
 class InvalidCertificateError(Exception):
 	pass
-
-# @brief custom request handler for ACME challenges
-# @note current working directory is temporarily changed by the script before
-#       the webserver starts, which allows using SimpleHTTPRequestHandler
-class ACMERequestHandler(SimpleHTTPRequestHandler):
-	# @brief remove directories from GET URL
-	# @details the current working directory contains the challenge files,
-	#          there is no need for creating subdirectories for the path
-	#          that ACME expects.
-	#          Additionally, this allows redirecting the ACME path to this
-	#          webserver without having to know which subdirectory is
-	#          redirected, which simplifies integration with existing
-	#          webservers.
-	def translate_path(self, path):
-		spath = path.split('/')
-		assert(spath[0] == '')
-		spath = spath[1:]
-		if spath[0] == '.well-known':
-			spath = spath[1:]
-		if spath[0] == 'acme-challenge':
-			spath = spath[1:]
-		assert(len(spath) == 1)
-		spath.insert(0, '')
-		path = '/'.join(spath)
-		return SimpleHTTPRequestHandler.translate_path(self, path)
-
-# @brief start the standalone webserver
-# @param server the HTTPServer object
-# @note this function is used to be passed to threading.Thread
-def start_standalone(server):
-	server.serve_forever()
 
 # @brief check whether existing target file is still valid or source crt has been updated
 # @param target string containing the path to the target file
@@ -141,11 +101,8 @@ def cert_get(domain, settings):
 
 		current_dir = os.getcwd()
 		os.chdir(challenge_dir)
-		HTTPServer.allow_reuse_address = True
-		server = HTTPServer(("", port), ACMERequestHandler)
-		server_thread = threading.Thread(target=start_standalone, args=(server, ))
-		server_thread.start()
-
+		server = acertmgr_web.ACMEHTTPServer(port)
+		server.start()
 	try:
 		allnames = domain.split(' ')
 		if len(allnames) == 1:
@@ -172,8 +129,7 @@ def cert_get(domain, settings):
 	finally:
 		if settings['mode'] == 'standalone':
 			os.chdir(current_dir)
-			server.shutdown()
-			server_thread.join()
+			server.stop()
 		os.remove(csr_file)
 		os.remove(crt_file)
 
