@@ -5,7 +5,6 @@
 # Copyright (c) Markus Hauschild, 2016.
 
 
-import acme_tiny
 import acertmgr_ssl
 import acertmgr_web
 import datetime
@@ -95,7 +94,7 @@ def cert_get(domain, settings):
 		key = key_fd.read()
 		key_fd.close()
 		cr = acertmgr_ssl.cert_request(domains.split(), key)
-		crt = acme_tiny.get_crt(acc_file, csr_file, challenge_dir)
+		crt = acertmgr_ssl.get_crt_from_csr(acc_file, cr, domains.split(), challenge_dir)
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
 
