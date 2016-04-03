@@ -89,7 +89,7 @@ jabber.example.com:
   format: key,crt,ca
   action: '/etc/init.d/ejabberd restart
 
-www.example.com:
+www.example.com example.com:
 - path: /var/www/ssl/cert.pem
   user: apache
   group: apache
