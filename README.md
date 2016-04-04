@@ -14,7 +14,7 @@ Requirements
   * Python (2.7+ and 3.3+ should work)
   * python-dateutil
   * PyYAML
-  * pyopenssl
+  * pyOpenSSL
 
 Initial Setup
 -------------
@@ -52,7 +52,6 @@ mode: webdir
 webdir: /var/www/acme-challenge/
 
 defaults:
-  format: crt
   cafile: /etc/acme/lets-encrypt-x3-cross-signed.pem
 
 ```
@@ -87,7 +86,7 @@ jabber.example.com:
   group: jabber
   perm: '400'
   format: key,crt,ca
-  action: '/etc/init.d/ejabberd restart
+  action: '/etc/init.d/ejabberd restart'
 
 www.example.com example.com:
 - path: /var/www/ssl/cert.pem
