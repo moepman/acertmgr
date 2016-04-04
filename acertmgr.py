@@ -107,8 +107,8 @@ def cert_get(domains, settings):
 
 	finally:
 		if settings['mode'] == 'standalone':
-			os.chdir(current_dir)
 			server.stop()
+			os.chdir(current_dir)
 		os.remove(csr_file)
 		os.remove(crt_file)
 
