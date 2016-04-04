@@ -22,9 +22,6 @@ try:
 except ImportError:
 	from urllib2 import urlopen # Python 2
 
-DEFAULT_CA = "https://acme-staging.api.letsencrypt.org"
-#DEFAULT_CA = "https://acme-v01.api.letsencrypt.org"
-
 # @brief retrieve notBefore and notAfter dates of a certificate file
 # @param cert_file the path to the certificate
 # @return the tuple of dates: (notBefore, notAfter)
@@ -68,7 +65,7 @@ def base64_enc(b):
 # @param CA which signing CA to use
 # @return the certificate in PEM format
 # @note algorithm and parts of the code are from acme-tiny
-def get_crt_from_csr(account_key_file, csr, domains, acme_dir, CA=DEFAULT_CA):
+def get_crt_from_csr(account_key_file, csr, domains, acme_dir, CA):
 	print("Reading account key...")
 	with open(account_key_file) as f:
 		account_key_data = f.read()
