@@ -96,7 +96,7 @@ def cert_get(domains, settings):
 		key = key_fd.read()
 		key_fd.close()
 		cr = acertmgr_ssl.cert_request(domains.split(), key)
-		crt = acertmgr_ssl.get_crt_from_csr(acc_file, cr, domains.split(), challenge_dir)
+		crt = acertmgr_ssl.get_crt_from_csr(acc_file, cr, domains.split(), challenge_dir, settings['authority'])
 		with open(crt_file, "w") as crt_fd:
 			crt_fd.write(crt)
 
