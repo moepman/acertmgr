@@ -37,6 +37,8 @@ class InvalidCertificateError(Exception):
 # @param crt_file string containing the path to the certificate file
 # @return True if target file is at least as new as the certificate, False otherwise
 def target_isCurrent(target, crt_file):
+	if not os.path.isfile(target):
+		return False
 	target_date = os.path.getmtime(target)
 	crt_date = os.path.getmtime(crt_file)
 	return target_date >= crt_date
