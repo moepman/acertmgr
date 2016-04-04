@@ -34,6 +34,7 @@ Thirdly, you should decide which challenge mode you want to use with acertmgr
     This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port.
 
 Finally, you need to setup the configuration files, as shown in the next section.
+While testing, you can use the acme-staging authority instead, so you avoid issuing too many certificates.
 
 Configuration
 -------------
@@ -50,6 +51,8 @@ mode: webdir
 #mode: standalone
 #port: 13135
 webdir: /var/www/acme-challenge/
+authority: "https://acme-v01.api.letsencrypt.org"
+#authority: "https://acme-staging.api.letsencrypt.org"
 
 defaults:
   cafile: /etc/acme/lets-encrypt-x3-cross-signed.pem
