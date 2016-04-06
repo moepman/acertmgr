@@ -216,7 +216,7 @@ if __name__ == "__main__":
 			if not target_isCurrent(cfg['path'], crt_file):
 				actions.add(cert_put(domains, cfg))
 
-		# run post-update actions
-		for action in actions:
-			if action is not None:
-				subprocess.call(action.split())
+	# run post-update actions
+	for action in actions:
+		if action is not None:
+			subprocess.call(action.split())
