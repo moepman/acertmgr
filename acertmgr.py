@@ -13,7 +13,6 @@ import dateutil.relativedelta
 import grp
 import os
 import pwd
-import re
 import shutil
 import subprocess
 import tempfile
