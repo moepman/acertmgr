@@ -98,9 +98,12 @@ def cert_get(domains, settings):
 		key = key_fd.read()
 		key_fd.close()
 		cr = acertmgr_ssl.cert_request(domains.split(), key)
-		crt = acertmgr_ssl.get_crt_from_csr(acc_file, cr, domains.split(), challenge_dir, settings['authority'])
+		print("Reading account key...")
+		acc_key = acertmgr_ssl.read_key(acc_file)
+		acertmgr_ssl.register_account(acc_key, settings['authority'])
+		crt = acertmgr_ssl.get_crt_from_csr(acc_key, cr, domains.split(), challenge_dir, settings['authority'])
 		with open(crt_file, "w") as crt_fd:
-			crt_fd.write(crt)
+			crt_fd.write(acertmgr_ssl.cert_to_pem(crt))
 
 		#  if resulting certificate is valid: store in final location
 		if cert_isValid(crt_file, 60):
