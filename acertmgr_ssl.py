@@ -26,7 +26,7 @@ except ImportError:
 # @param cert_file the path to the certificate
 # @return the tuple of dates: (notBefore, notAfter)
 def cert_valid_times(cert_file):
-	with open(cert_file) as f:
+	with open(cert_file, 'r') as f:
 		cert_data = f.read()
 	cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_data)
 	asn1time = str('%Y%m%d%H%M%SZ'.encode('utf8'))
@@ -46,7 +46,6 @@ def cert_request(names, key):
 	req.add_extensions(extensions)
 	req.set_pubkey(key)
 	req.sign(key, 'sha256')
-	#return crypto.dump_certificate_request(crypto.FILETYPE_PEM, req)
 	return req
 
 # @brief convert certificate to PEM format
@@ -59,7 +58,7 @@ def cert_to_pem(cert):
 # @param path path to key file
 # @return the key in pyopenssl format
 def read_key(path):
-	with open(path) as f:
+	with open(path, 'r') as f:
 		key_data = f.read()
 	return crypto.load_privatekey(crypto.FILETYPE_PEM, key_data)
 
