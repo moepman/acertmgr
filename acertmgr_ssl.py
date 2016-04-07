@@ -36,15 +36,14 @@ def cert_valid_times(cert_file):
 
 # @brief create a certificate signing request
 # @param names list of domain names the certificate should be valid for
-# @param key_data the key to use with the certificate in PEM format
-# @return the CSR in PEM format
-def cert_request(names, key_data):
+# @param key the key to use with the certificate in pyopenssl format
+# @return the CSR in pyopenssl format
+def cert_request(names, key):
 	req = crypto.X509Req()
 	req.get_subject().commonName = names[0]
 	entries = ['DNS:'+name for name in names]
 	extensions = [crypto.X509Extension('subjectAltName'.encode('utf8'), False, ', '.join(entries).encode('utf8'))]
 	req.add_extensions(extensions)
-	key = crypto.load_privatekey(crypto.FILETYPE_PEM, key_data)
 	req.set_pubkey(key)
 	req.sign(key, 'sha256')
 	#return crypto.dump_certificate_request(crypto.FILETYPE_PEM, req)

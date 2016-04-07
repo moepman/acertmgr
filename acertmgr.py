@@ -94,9 +94,7 @@ def cert_get(domains, settings):
 		server = acertmgr_web.ACMEHTTPServer(port)
 		server.start()
 	try:
-		key_fd = open(key_file, "r")
-		key = key_fd.read()
-		key_fd.close()
+		key = acertmgr_ssl.read_key(key_file)
 		cr = acertmgr_ssl.cert_request(domains.split(), key)
 		print("Reading account key...")
 		acc_key = acertmgr_ssl.read_key(acc_file)
