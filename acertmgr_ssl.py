@@ -67,14 +67,11 @@ def read_key(path):
 # @param key the account key
 # @return the header for ACME
 def acme_header(key):
-	proc = subprocess.Popen(['openssl', 'rsa', '-modulus', '-noout', '-text'],
-		stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	out, err = proc.communicate(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
-	if proc.returncode != 0:
-		raise IOError("OpenSSL Error: {0}".format(err))
-	pub_exp, pub_mod = re.search(
-		r"publicExponent: [0-9]+ \(0x([0-9A-F]+)\).+Modulus=([0-9A-F]+)",
-		out.decode('utf8'), re.DOTALL).groups()
+	txt = crypto.dump_privatekey(crypto.FILETYPE_TEXT, key)
+	pub_mod, pub_exp = re.search(
+		r"modulus:\n\s+00:([0-9a-f:\s]+)\npublicExponent: [0-9]+ \(0x([0-9A-F]+)\)",
+		txt.decode('utf8'), re.DOTALL).groups()
+	pub_mod = re.sub('[:\s]', '', pub_mod)
 	pub_exp = "0{0}".format(pub_exp) if len(pub_exp) % 2 else pub_exp
 	header = {
 		"alg": "RS256",
