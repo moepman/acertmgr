@@ -19,9 +19,9 @@ import tempfile
 import yaml
 
 
-ACME_DIR="/etc/acme/"
-ACME_CONF=ACME_DIR + "acme.conf"
-ACME_CONFD=ACME_DIR + "domains.d/"
+ACME_DIR="/etc/acme"
+ACME_CONF=os.path.join(ACME_DIR, "acme.conf")
+ACME_CONFD=os.path.join(ACME_DIR, "domains.d")
 
 
 class FileNotFoundError(OSError):
@@ -70,11 +70,11 @@ def cert_get(domains, settings):
 	domain = domains.split(' ')[0]
 	print("Getting certificate for %s." % domain)
 
-	key_file = ACME_DIR + "server.key"
+	key_file = os.path.join(ACME_DIR, "server.key")
 	if not os.path.isfile(key_file):
 		raise FileNotFoundError("The server key file (%s) is missing!" % key_file)
 
-	acc_file = ACME_DIR + "account.key"
+	acc_file = os.path.join(ACME_DIR, "account.key")
 	if not os.path.isfile(acc_file):
 		raise FileNotFoundError("The account key file (%s) is missing!" % acc_file)
 
@@ -103,7 +103,7 @@ def cert_get(domains, settings):
 
 		#  if resulting certificate is valid: store in final location
 		if cert_isValid(crt_file, 60):
-			crt_final = ACME_DIR + "%s.crt" % domain
+			crt_final = os.path.join(ACME_DIR, ("%s.crt" % domain))
 			shutil.copy2(crt_file, crt_final)
 
 	finally:
@@ -128,8 +128,8 @@ def cert_put(domain, settings):
 	crt_format = settings['format'].split(",")
 	crt_action = settings['action']
 
-	key_file = ACME_DIR + "server.key"
-	crt_final = ACME_DIR + "%s.crt" % domain.split(' ')[0]
+	key_file = os.path.join(ACME_DIR, "server.key")
+	crt_final = os.path.join(ACME_DIR, ("%s.crt" % domain.split(' ')[0]))
 
 	with open(crt_path, "w+") as crt_fd:
 		for fmt in crt_format:
@@ -194,7 +194,7 @@ if __name__ == "__main__":
 	# load domain configuration
 	for config_file in os.listdir(ACME_CONFD):
 		if config_file.endswith(".conf"):
-			with open(ACME_CONFD + config_file) as config_fd:
+			with open(os.path.join(ACME_CONFD, config_file)) as config_fd:
 				for entry in yaml.load(config_fd).items():
 					config['domains'].append(entry)
 
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 		# skip domains without any output files
 		if domaincfgs is None:
 			continue
-		crt_file = ACME_DIR + "%s.crt" % domains.split(' ')[0]
+		crt_file = os.path.join(ACME_DIR, ("%s.crt" % domains.split(' ')[0]))
 		ttl_days = int(config.get('ttl_days', 15))
 		if not cert_isValid(crt_file, ttl_days):
 			cert_get(domains, config)
