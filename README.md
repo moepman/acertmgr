@@ -51,6 +51,8 @@ All configuration files use yaml syntax.
 mode: webdir
 #mode: standalone
 #port: 13135
+account_key: "/etc/acme/account.key"
+server_key: "/etc/acme/server.key"
 webdir: /var/www/acme-challenge/
 authority: "https://acme-v01.api.letsencrypt.org"
 #authority: "https://acme-staging.api.letsencrypt.org"
