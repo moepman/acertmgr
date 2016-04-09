@@ -23,6 +23,7 @@ First, you need to provide two key files for the ACME protocol:
   * The account key is expected at `/etc/acme/account.key`
   * The domain key is expected at `/etc/acme/server.key` (note: only one domain key is required for all domains used in the same instance of acertmgr)
 If you are missing these keys, you can create them using `openssl genrsa 4096 > /etc/acme/account.key` and `openssl genrsa 4096 > /etc/acme/server.key` respectively.
+  * Do not forget to set proper permissions of the keys using `chmod 0400 /etc/acme/*.key`
 
 Secondly, you should download the letsencrypt CA certificate:
   * wget -O /etc/acme/lets-encrypt-x3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem
