@@ -24,6 +24,8 @@ ACME_DIR="/etc/acme"
 ACME_CONF=os.path.join(ACME_DIR, "acme.conf")
 ACME_CONFD=os.path.join(ACME_DIR, "domains.d")
 
+ACME_DEFAULT_SERVER_KEY = os.path.join(ACME_DIR, "server.key")
+ACME_DEFAULT_ACCOUNT_KEY = os.path.join(ACME_DIR, "account.key")
 
 class FileNotFoundError(OSError):
 	pass
@@ -71,11 +73,11 @@ def cert_get(domains, settings):
 	domain = domains.split(' ')[0]
 	print("Getting certificate for %s." % domain)
 
-	key_file = os.path.join(ACME_DIR, "server.key")
+	key_file = settings['server_key']
 	if not os.path.isfile(key_file):
 		raise FileNotFoundError("The server key file (%s) is missing!" % key_file)
 
-	acc_file = os.path.join(ACME_DIR, "account.key")
+	acc_file = settings['account_key']
 	if not os.path.isfile(acc_file):
 		raise FileNotFoundError("The account key file (%s) is missing!" % acc_file)
 
@@ -131,7 +133,7 @@ def cert_put(domain, settings):
 	crt_format = settings['format'].split(",")
 	crt_action = settings['action']
 
-	key_file = os.path.join(ACME_DIR, "server.key")
+	key_file = settings['server_key']
 	crt_final = os.path.join(ACME_DIR, ("%s.crt" % domain.split(' ')[0]))
 
 	with open(crt_path, "w+") as crt_fd:
@@ -173,11 +175,12 @@ def cert_put(domain, settings):
 # @param domainconfig the domain configuration
 # @param defaults the default configuration
 # @return the augmented configuration
-def complete_config(domainconfig, defaults):
-	if defaults:
-		for name, value in defaults.items():
-			if name not in domainconfig:
-				domainconfig[name] = value
+def complete_config(domainconfig, globalconfig):
+	defaults = globalconfig['defaults']
+	domainconfig['server_key'] = globalconfig['server_key']
+	for name, value in defaults.items():
+		if name not in domainconfig:
+			domainconfig[name] = value
 	if 'action' not in domainconfig:
 		domainconfig['action'] = None
 	return domainconfig
@@ -192,6 +195,10 @@ if __name__ == "__main__":
 		config = {}
 	if 'defaults' not in config:
 		config['defaults'] = {}
+	if 'server_key' not in config:
+		config['server_key'] = ACME_DEFAULT_SERVER_KEY
+	if 'account_key' not in config:
+		config['account_key'] = ACME_DEFAULT_ACCOUNT_KEY
 
 	config['domains'] = []
 	# load domain configuration
@@ -214,7 +221,7 @@ if __name__ == "__main__":
 		if not cert_isValid(crt_file, ttl_days):
 			cert_get(domains, config)
 		for domaincfg in domaincfgs:
-			cfg = complete_config(domaincfg, config['defaults'])
+			cfg = complete_config(domaincfg, config)
 			if not target_isCurrent(cfg['path'], crt_file):
 				actions.add(cert_put(domains, cfg))
 
