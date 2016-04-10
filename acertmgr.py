@@ -15,6 +15,7 @@ import os
 import pwd
 import shutil
 import subprocess
+import stat
 import tempfile
 import yaml
 
@@ -105,6 +106,7 @@ def cert_get(domains, settings):
 		if cert_isValid(crt_file, 60):
 			crt_final = os.path.join(ACME_DIR, ("%s.crt" % domain))
 			shutil.copy2(crt_file, crt_final)
+			os.chmod(crt_final, stat.S_IREAD)
 
 	finally:
 		if settings['mode'] == 'standalone':
