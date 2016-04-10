@@ -73,18 +73,22 @@ mail.example.com:
   group: postfix
   perm: '400'
   format: key
-  action: '/etc/init.d/postfix reload'
+  actions:
+    - '/etc/init.d/postfix reload'
+    - '/trigger/some/script'
 - path: /etc/postfix/ssl/mail.crt
   user: postfix
   group: postfix
   perm: '400'
   format: crt
-  action: '/etc/init.d/postfix reload'
+  actions:
+    - '/etc/init.d/postfix reload'
 - path: /etc/dovecot/ssl/mail.crt
   user: dovecot
   group: dovecot
   perm: '400'
-  action: '/etc/init.d/dovecot reload'
+  actions:
+    - '/etc/init.d/dovecot reload'
 
 jabber.example.com:
 - path: /etc/ejabberd/server.pem
@@ -92,20 +96,23 @@ jabber.example.com:
   group: jabber
   perm: '400'
   format: key,crt,ca
-  action: '/etc/init.d/ejabberd restart'
+  actions:
+    - '/etc/init.d/ejabberd restart'
 
 www.example.com example.com:
 - path: /var/www/ssl/cert.pem
   user: apache
   group: apache
   perm: '400'
-  action: '/etc/init.d/apache2 reload'
+  actions:
+    - '/etc/init.d/apache2 reload'
   format: crt,ca
 - path: /var/www/ssl/key.pem
   user: apache
   group: apache
   perm: '400'
-  action: '/etc/init.d/apache2 reload'
+  action:
+    - '/etc/init.d/apache2 reload'
   format: key
 ```
 

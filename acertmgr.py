@@ -130,7 +130,7 @@ def cert_put(domain, settings):
 	crt_perm = settings['perm']
 	crt_path = settings['path']
 	crt_format = settings['format'].split(",")
-	crt_action = settings['action']
+	crt_actions = settings['actions']
 
 	key_file = settings['server_key']
 	crt_final = os.path.join(ACME_DIR, ("%s.crt" % domain.split(' ')[0]))
@@ -167,7 +167,7 @@ def cert_put(domain, settings):
 	except OSError:
 		print('Warning: Could not set certificate file permissions!')
 
-	return crt_action
+	return set(crt_actions)
 
 
 # @brief augment configuration with defaults
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 		for domaincfg in domaincfgs:
 			cfg = complete_config(domaincfg, config)
 			if not target_isCurrent(cfg['path'], crt_file):
-				actions.add(cert_put(domains, cfg))
+				actions = actions | cert_put(domains, cfg)
 
 	# run post-update actions
 	for action in actions:
