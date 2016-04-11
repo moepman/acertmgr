@@ -23,6 +23,7 @@ First, you need to provide two key files for the ACME protocol:
   * The account key is expected at `/etc/acme/account.key`
   * The domain key is expected at `/etc/acme/server.key` (note: only one domain key is required for all domains used in the same instance of acertmgr)
 If you are missing these keys, you can create them using `openssl genrsa 4096 > /etc/acme/account.key` and `openssl genrsa 4096 > /etc/acme/server.key` respectively.
+  * Do not forget to set proper permissions of the keys using `chmod 0400 /etc/acme/*.key`
 
 Secondly, you should download the letsencrypt CA certificate:
   * wget -O /etc/acme/lets-encrypt-x3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem
@@ -50,6 +51,8 @@ All configuration files use yaml syntax.
 mode: webdir
 #mode: standalone
 #port: 13135
+account_key: "/etc/acme/account.key"
+server_key: "/etc/acme/server.key"
 webdir: /var/www/acme-challenge/
 authority: "https://acme-v01.api.letsencrypt.org"
 #authority: "https://acme-staging.api.letsencrypt.org"
@@ -70,18 +73,22 @@ mail.example.com:
   group: postfix
   perm: '400'
   format: key
-  action: '/etc/init.d/postfix reload'
+  actions:
+    - '/etc/init.d/postfix reload'
+    - '/trigger/some/script'
 - path: /etc/postfix/ssl/mail.crt
   user: postfix
   group: postfix
   perm: '400'
   format: crt
-  action: '/etc/init.d/postfix reload'
+  actions:
+    - '/etc/init.d/postfix reload'
 - path: /etc/dovecot/ssl/mail.crt
   user: dovecot
   group: dovecot
   perm: '400'
-  action: '/etc/init.d/dovecot reload'
+  actions:
+    - '/etc/init.d/dovecot reload'
 
 jabber.example.com:
 - path: /etc/ejabberd/server.pem
@@ -89,20 +96,23 @@ jabber.example.com:
   group: jabber
   perm: '400'
   format: key,crt,ca
-  action: '/etc/init.d/ejabberd restart'
+  actions:
+    - '/etc/init.d/ejabberd restart'
 
 www.example.com example.com:
 - path: /var/www/ssl/cert.pem
   user: apache
   group: apache
   perm: '400'
-  action: '/etc/init.d/apache2 reload'
+  actions:
+    - '/etc/init.d/apache2 reload'
   format: crt,ca
 - path: /var/www/ssl/key.pem
   user: apache
   group: apache
   perm: '400'
-  action: '/etc/init.d/apache2 reload'
+  action:
+    - '/etc/init.d/apache2 reload'
   format: key
 ```
 
