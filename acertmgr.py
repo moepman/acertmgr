@@ -145,7 +145,7 @@ def cert_put(domain, settings):
 				src_fd.close()
 			if fmt == "ca":
 				if not os.path.isfile(ca_file):
-					raise FileNotFoundError("The server key file (%s) is missing!" % ca_file)
+					raise FileNotFoundError("The CA certificate file (%s) is missing!" % ca_file)
 				src_fd = open(ca_file, "r")
 				crt_fd.write(src_fd.read())
 				src_fd.close()
