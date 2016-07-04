@@ -131,6 +131,7 @@ def cert_put(domain, settings):
 	crt_perm = settings['perm']
 	crt_path = settings['path']
 	crt_format = settings['format'].split(",")
+	crt_format = [str.strip(x) for x in crt_format]
 	crt_action = settings['action']
 
 	key_file = settings['server_key']
