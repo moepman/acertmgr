@@ -90,7 +90,7 @@ def register_account(account_key, CA):
 	header = acme_header(account_key)
 	code, result = send_signed(account_key, CA, CA + "/acme/new-reg", header, {
 		"resource": "new-reg",
-		"agreement": "https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf",
+		"agreement": "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf",
 	})
 	if code == 201:
 		print("Registered!")
