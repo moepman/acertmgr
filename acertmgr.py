@@ -11,6 +11,7 @@ import acertmgr_web
 import datetime
 import dateutil.relativedelta
 import grp
+import hashlib
 import os
 import pwd
 import shutil
@@ -70,8 +71,7 @@ def cert_isValid(crt_file, ttl_days):
 # @param domain string containing the domain name
 # @param settings the domain's configuration options
 def cert_get(domains, settings):
-	domain = domains.split(' ')[0]
-	print("Getting certificate for %s." % domain)
+	print("Getting certificate for %s." % domains)
 
 	key_file = settings['server_key']
 	if not os.path.isfile(key_file):
@@ -81,8 +81,9 @@ def cert_get(domains, settings):
 	if not os.path.isfile(acc_file):
 		raise FileNotFoundError("The account key file (%s) is missing!" % acc_file)
 
-	_, csr_file = tempfile.mkstemp(".csr", "%s." % domain)
-	_, crt_file = tempfile.mkstemp(".crt", "%s." % domain)
+	filename = hashlib.md5(domains).hexdigest()
+	_, csr_file = tempfile.mkstemp(".csr", "%s." % filename)
+	_, crt_file = tempfile.mkstemp(".crt", "%s." % filename)
 
 	challenge_dir = settings.get("webdir", "/var/www/acme-challenge/")
 	if not os.path.isdir(challenge_dir):
@@ -135,7 +136,7 @@ def cert_put(domain, settings):
 	crt_action = settings['action']
 
 	key_file = settings['server_key']
-	crt_final = os.path.join(ACME_DIR, ("%s.crt" % domain.split(' ')[0]))
+	crt_final = os.path.join(ACME_DIR, (hashlib.md5(domains).hexdigest() + ".crt"))
 
 	with open(crt_path, "w+") as crt_fd:
 		for fmt in crt_format:
@@ -217,7 +218,7 @@ if __name__ == "__main__":
 		# skip domains without any output files
 		if domaincfgs is None:
 			continue
-		crt_file = os.path.join(ACME_DIR, ("%s.crt" % domains.split(' ')[0]))
+		crt_file = os.path.join(ACME_DIR, (hashlib.md5(domains).hexdigest() + ".crt"))
 		ttl_days = int(config.get('ttl_days', 15))
 		if not cert_isValid(crt_file, ttl_days):
 			cert_get(domains, config)
