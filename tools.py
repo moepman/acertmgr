@@ -14,6 +14,7 @@ import os
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 
@@ -64,6 +65,27 @@ def new_cert_request(names, key):
     req = req.add_extension(all_names, critical=False)
     req = req.sign(key, hashes.SHA256(), default_backend())
     return req
+
+
+# @brief generate a new rsa key
+# @param path path where the new key file should be written
+def new_rsa_key(path, key_size=4096):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=key_size,
+        backend=default_backend()
+    )
+    pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    with open(path, 'wb') as pem_out:
+        pem_out.write(pem)
+    try:
+        os.chmod(path, int("0400", 8))
+    except OSError:
+        print('Warning: Could not set file permissions on {0}!'.format(path))
 
 
 # @brief convert certificate to PEM format

@@ -53,11 +53,13 @@ def cert_get(domains, settings):
 
     key_file = settings['server_key']
     if not os.path.isfile(key_file):
-        raise FileNotFoundError("The server key file (%s) is missing!" % key_file)
+        print("Server key not found at '{0}'. Creating RSA key.".format(key_file))
+        tools.new_rsa_key(key_file)
 
     acc_file = settings['account_key']
     if not os.path.isfile(acc_file):
-        raise FileNotFoundError("The account key file (%s) is missing!" % acc_file)
+        print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
+        tools.new_rsa_key(acc_file)
 
     filename = hashlib.md5(domains).hexdigest()
     _, csr_file = tempfile.mkstemp(".csr", "%s." % filename)
