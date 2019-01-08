@@ -12,28 +12,31 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.3+ should work)
-  * python-dateutil
-  * PyYAML
-  * pyOpenSSL (0.15.1+)
+  * cryptography
+  
+Optional packages
+-----------------
+
+  * PyYAML (when using config files in YAML format)
+  * dnspython (required for the dns.nsupdate mode)
 
 Initial Setup
 -------------
 
-First, you need to provide two key files for the ACME protocol:
-  * The account key is expected at `/etc/acme/account.key`
-  * The domain key is expected at `/etc/acme/server.key` (Note: only one domain key is required for all domains used in the same instance of acertmgr)
-  * If you are missing these keys, you can create them using `openssl genrsa 4096 > /etc/acme/account.key` and `openssl genrsa 4096 > /etc/acme/server.key` respectively
-  * Do not forget to set proper permissions of the keys using `chmod 0400 /etc/acme/*.key`
-
-Secondly, you should download the letsencrypt CA certificate:
-  * `wget -O /etc/acme/lets-encrypt-x3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem`
-  * The path to this file must be entered in the configuration, see examples below
-
-Thirdly, you should decide which challenge mode you want to use with acertmgr:
+You should decide which challenge mode you want to use with acertmgr:
   * webdir: In this mode, challenges are put into a directory, and served by an existing webserver
   * standalone: In this mode, challenges are completed by acertmgr directly.
     This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port
-  * Make sure that the `webdir` directory exists in both cases (Note: the standalone webserver does not yet serve the files in situ)
+  * webdir/standalone: Make sure that the `webdir` directory exists in both cases (Note: the standalone webserver does not yet serve the files in situation)
+  * dns.*: This mode puts the challenge into a TXT record for the domain (usually _acme-challenge.<domain>) where it will be parsed from by the authority
+  * dns.* (Alias mode): Can be used similar to the above but allows redirection of _acme-challenge.<domain> to any other (updatable domain) defined in dns_updatedomain via CNAME (e.g. _acme-challenge.example.net IN CNAME bla.foo.bar with config dns_updatedomain="bla.foo.bar" in config)
+  * dns.nsupdate: Updates the TXT record using RFC2136 (with dnspython)
+
+You can optionally provide the key files for the ACME protocol, if you do not they will be automatically created:
+  * The account key is expected at `/etc/acme/account.key`
+  * The domain key is expected at `/etc/acme/server.key` (Note: only one domain key is required for all domains used in the same instance of acertmgr)
+  * If you are missing these keys, they will be created for you or you can create them using `openssl genrsa 4096 > /etc/acme/account.key` and `openssl genrsa 4096 > /etc/acme/server.key` respectively
+  * Do not forget to set proper permissions of the keys using `chmod 0400 /etc/acme/*.key`
 
 Finally, you need to setup the configuration files, as shown in the next section.
 While testing, you can use the acme-staging authority instead, in order to avoid issuing too many certificates.
@@ -43,32 +46,29 @@ Configuration
 
 The main configuration is read from `/etc/acme/acme.conf`, domains for which certificates should be obtained/renewed should be configured in `/etc/acme/domains.d/*.conf`.
 
-All configuration files use yaml syntax.
+All configuration files can use yaml (requires PyYAML) or json syntax.
 
-  * Example global configuration file:
+  * Example global configuration file (YAML syntax):
 ```yaml
 ---
-
-mode: webdir
-#mode: standalone
-#port: 13135
-
-# Optional: account_key location. This defaults to "/etc/acme/account.key"
-account_key: "/etc/acme/acc.key"
-# Optional: server_key location. This defaults to "/etc/acme/server.key"
-server_key: "/etc/acme/serv.key"
-
-webdir: /var/www/acme-challenge/
+# Required: Authority API endpoint to use
 authority: "https://acme-v01.api.letsencrypt.org"
 #authority: "https://acme-staging.api.letsencrypt.org"
 
-# settings under this section apply to all domains unless overridden
-defaults:
-  cafile: /etc/acme/lets-encrypt-x3-cross-signed.pem
+# Optional: account_key location. This defaults to "/etc/acme/account.key"
+account_key: "/etc/acme/acc.key"
 
+# Optional: global server_key location. Otherwise separate key per server
+#server_key: "/etc/acme/serv.key"
+
+# Optional: global challenge handling mode with parameters
+#mode: webdir
+#webdir: /var/www/acme-challenge/
+#mode: standalone
+#port: 13135
 ```
 
-  * Example domain configuration file:
+  * Example domain configuration file (YAML syntax):
 
 ```yaml
 ---
@@ -109,6 +109,97 @@ www.example.com example.com:
   perm: '400'
   action: '/etc/init.d/apache2 reload'
   format: key
+
+# this will create a certificate with subject alternative names
+# using a different challenge handler for one domain
+mail.example.com smtp.example.com webmail.example.net:
+- mode: dns.nsupdate
+  nsupdate_server: ns1.example.com
+  nsupdate_keyname: mail
+  nsupdate_keyvalue: Test1234512359==
+- domain: webmail.example.net
+  mode: dns.nsupdate
+  nsupdate_server: ns1.example.net
+  nsupdate_keyname: webmail.
+  nsupdate_keyfile: /etc/nsupdate.key
+  dns_updatedomain: webmail.example.net
+- path: /etc/postfix/ssl/mail.key
+  user: root
+  group: root
+  perm: '400'
+  format: key
+  action: '/etc/init.d/postfix reload'
+- path: /etc/postfix/ssl/mail.crt
+  user: root
+  group: root
+  perm: '400'
+  format: crt,ca
+  action: '/etc/init.d/postfix reload'
+
+```
+
+ * Example global configuration file (JSON syntax):
+```json
+---
+{
+"mode": "standalone",
+"port": "80",
+
+"account_key": "/etc/acme/acc.key",
+"server_key": "/etc/acme/serv.key",
+
+"webdir": "/var/www/acme-challenge/",
+"authority": "https://acme-v01.api.letsencrypt.org",
+
+"defaults": 
+  { 
+  "cafile": "/etc/acme/lets-encrypt-x3-cross-signed.pem"
+  }
+}
+```
+
+  * Example domain configuration file (JSON syntax):
+
+```json
+---
+{
+"mail.example.com": [
+{ "path": "/etc/postfix/ssl/mail.key",
+  "user": "root",
+  "group": "root",
+  "perm": "400",
+  "format": "key",
+  "action": "/etc/init.d/postfix reload" },
+{ "path": "/etc/postfix/ssl/mail.crt",
+  "user": "root",
+  "group": "root",
+  "perm": "400",
+  "format": "crt,ca",
+  "action": "/etc/init.d/postfix reload" }
+],
+"jabber.example.com": [
+{ "path": "/etc/ejabberd/server.pem",
+  "user": "jabber",
+  "group": "jabber",
+  "perm": "400",
+  "format": "key,crt,ca",
+  "action": "/etc/init.d/ejabberd restart" }
+],
+"www.example.com example.com": [
+{ "path": "/var/www/ssl/cert.pem",
+  "user": "apache",
+  "group": "apache",
+  "perm": "400",
+  "action": "/etc/init.d/apache2 reload",
+  "format": "crt,ca" },
+{ "path": "/var/www/ssl/key.pem",
+  "user": "apache",
+  "group": "apache",
+  "perm": "400",
+  "action": "/etc/init.d/apache2 reload",
+  "format": "key" }
+]
+}
 ```
 
 Security
