@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# acertmgr - ACME challenge webserver
+# standalone - standalone ACME challenge webserver
 # Copyright (c) Markus Hauschild & David Klaftenegger, 2016.
+# Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
 try:
@@ -15,7 +16,10 @@ try:
 except ImportError:
     from http.server import HTTPServer
 
+import os
 import threading
+
+from modes.webdir import ChallengeHandler as WebChallengeHandler
 
 
 # @brief custom request handler for ACME challenges
@@ -51,20 +55,28 @@ def start_standalone(server):
     server.serve_forever()
 
 
-# @brief a simple webserver for challanges
-class ACMEHTTPServer:
-    # @brief create webserver instance
-    # @param port the port to listen on
-    def __init__(self, port=80):
-        HTTPServer.allow_reuse_address = True
+HTTPServer.allow_reuse_address = True
+
+
+class ChallengeHandler(WebChallengeHandler):
+    def __init__(self, config):
+        WebChallengeHandler.__init__(self, config)
+        self.current_directory = os.getcwd()
+        if "port" in config:
+            port = int(config["port"])
+        else:
+            port = 80
+        self.server_thread = None
         self.server = HTTPServer(("", port), ACMERequestHandler)
 
-    # @brief start the webserver
-    def start(self):
+    def create_challenge(self, domain, thumbprint, token):
+        WebChallengeHandler.create_challenge(self, domain, thumbprint, token)
         self.server_thread = threading.Thread(target=start_standalone, args=(self.server,))
+        os.chdir(self.challenge_directory)
         self.server_thread.start()
 
-    # @brief stop the webserver
-    def stop(self):
+    def destroy_challenge(self, domain, thumbprint, token):
         self.server.shutdown()
         self.server_thread.join()
+        os.chdir(self.current_directory)
+        WebChallengeHandler.destroy_challenge(self, domain, thumbprint, token)

@@ -6,10 +6,10 @@
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
-import acme
-import tools
+
 import grp
 import hashlib
+import importlib
 import os
 import pwd
 import shutil
@@ -17,9 +17,8 @@ import stat
 import subprocess
 import tempfile
 
-import yaml
-
-import acertmgr_web
+import acme
+import tools
 
 ACME_DIR = "/etc/acme"
 ACME_CONF = os.path.join(ACME_DIR, "acme.conf")
@@ -27,10 +26,6 @@ ACME_CONFD = os.path.join(ACME_DIR, "domains.d")
 
 ACME_DEFAULT_SERVER_KEY = os.path.join(ACME_DIR, "server.key")
 ACME_DEFAULT_ACCOUNT_KEY = os.path.join(ACME_DIR, "account.key")
-
-
-class FileNotFoundError(OSError):
-    pass
 
 
 # @brief check whether existing target file is still valid or source crt has been updated
@@ -45,18 +40,32 @@ def target_is_current(target, crt_file):
     return target_date >= crt_date
 
 
-# @brief fetch new certificate from letsencrypt
-# @param domain string containing the domain name
-# @param settings the domain's configuration options
-def cert_get(domains, settings):
-    print("Getting certificate for %s." % domains)
+# @brief create a challenge handler for the given configuration
+# @param config the domain's configuration options
+def create_challenge_handler(config):
+    if "mode" in config:
+        mode = config["mode"]
+    else:
+        mode = "standalone"
 
-    key_file = settings['server_key']
+    handler_module = importlib.import_module("modes.{0}".format(mode))
+    handler_class = getattr(handler_module, "ChallengeHandler")
+    return handler_class(config)
+
+
+# @brief fetch new certificate from letsencrypt
+# @param domains string containing all domain names
+# @param globalconfig the global configuration options
+# @param handlerconfigs the domain's handler configuration options
+def cert_get(domains, globalconfig, handlerconfigs):
+    print("Getting certificate for '%s'." % domains)
+
+    key_file = globalconfig['server_key']
     if not os.path.isfile(key_file):
         print("Server key not found at '{0}'. Creating RSA key.".format(key_file))
         tools.new_rsa_key(key_file)
 
-    acc_file = settings['account_key']
+    acc_file = globalconfig['account_key']
     if not os.path.isfile(acc_file):
         print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
         tools.new_rsa_key(acc_file)
@@ -65,39 +74,43 @@ def cert_get(domains, settings):
     _, csr_file = tempfile.mkstemp(".csr", "%s." % filename)
     _, crt_file = tempfile.mkstemp(".crt", "%s." % filename)
 
-    challenge_dir = settings.get("webdir", "/var/www/acme-challenge/")
-    if not os.path.isdir(challenge_dir):
-        raise FileNotFoundError("Challenge directory (%s) does not exist!" % challenge_dir)
+    # find challenge handlers for this certificate
+    challenge_handlers = dict()
+    domainlist = domains.split(' ')
+    for domain in domainlist:
+        # Use global config as base handler config
+        cfg = globalconfig.deepcopy()
 
-    current_dir = '.'
-    server = None
-    if settings['mode'] == 'standalone':
-        port = settings.get('port', 80)
+        # Determine generic domain handler config values
+        genericfgs = [x for x in handlerconfigs if 'domain' not in x]
+        if len(genericfgs) > 0:
+            cfg = cfg.update(genericfgs[0])
 
-        current_dir = os.getcwd()
-        os.chdir(challenge_dir)
-        server = acertmgr_web.ACMEHTTPServer(port)
-        server.start()
+        # Update handler config with more specific values
+        specificcfgs = [x for x in handlerconfigs if ('domain' in x and x['domain'] == domain)]
+        if len(specificcfgs) > 0:
+            cfg = cfg.update(specificcfgs[0])
+
+        # Create the challenge handler
+        challenge_handlers[domain] = create_challenge_handler(cfg)
+
     try:
         key = tools.read_key(key_file)
-        cr = tools.new_cert_request(domains.split(), key)
+        cr = tools.new_cert_request(domainlist, key)
         print("Reading account key...")
         acc_key = tools.read_key(acc_file)
-        acme.register_account(acc_key, settings['authority'])
-        crt = acme.get_crt_from_csr(acc_key, cr, domains.split(), challenge_dir, settings['authority'])
+        acme.register_account(acc_key, config['authority'])
+        crt = acme.get_crt_from_csr(acc_key, cr, domainlist, challenge_handlers, config['authority'])
         with open(crt_file, "w") as crt_fd:
             crt_fd.write(tools.convert_cert_to_pem(crt))
 
         #  if resulting certificate is valid: store in final location
         if tools.is_cert_valid(crt_file, 60):
-            crt_final = os.path.join(ACME_DIR, ("%s.crt" % domains.split(" ")[0]))
+            crt_final = os.path.join(ACME_DIR, (hashlib.md5(domains).hexdigest() + ".crt"))
             shutil.copy2(crt_file, crt_final)
             os.chmod(crt_final, stat.S_IREAD)
 
     finally:
-        if settings['mode'] == 'standalone':
-            server.stop()
-            os.chdir(current_dir)
         os.remove(csr_file)
         os.remove(crt_file)
 
@@ -170,11 +183,18 @@ def complete_config(domainconfig, globalconfig):
 
 
 if __name__ == "__main__":
+    config = dict()
     # load global configuration
-    config = {}
     if os.path.isfile(ACME_CONF):
         with open(ACME_CONF) as config_fd:
-            config = yaml.load(config_fd)
+            try:
+                import json
+
+                config = json.load(config_fd)
+            except json.JSONDecodeError:
+                import yaml
+
+                config = yaml.load(config_fd)
     if 'defaults' not in config:
         config['defaults'] = {}
     if 'server_key' not in config:
@@ -187,8 +207,16 @@ if __name__ == "__main__":
     for config_file in os.listdir(ACME_CONFD):
         if config_file.endswith(".conf"):
             with open(os.path.join(ACME_CONFD, config_file)) as config_fd:
-                for entry in yaml.load(config_fd).items():
-                    config['domains'].append(entry)
+                try:
+                    import json
+
+                    for entry in json.load(config_fd).items():
+                        config['domains'].append(entry)
+                except json.JSONDecodeError:
+                    import yaml
+
+                    for entry in yaml.load(config_fd).items():
+                        config['domains'].append(entry)
 
     # post-update actions (run only once)
     actions = set()
@@ -201,11 +229,13 @@ if __name__ == "__main__":
         crt_file = os.path.join(ACME_DIR, (hashlib.md5(domains).hexdigest() + ".crt"))
         ttl_days = int(config.get('ttl_days', 15))
         if not tools.is_cert_valid(crt_file, ttl_days):
-            cert_get(domains, config)
-        for domaincfg in domaincfgs:
-            cfg = complete_config(domaincfg, config)
-            if not target_is_current(cfg['path'], crt_file):
-                actions.add(cert_put(cfg))
+            # Get certificates using handler configs (contain element 'mode')
+            cert_get(domains, config, [x for x in domaincfgs if 'mode' in x])
+        # Run actions from config (contain element 'path')
+        for actioncfg in [x for x in domaincfgs if 'path' in x]:
+            actioncfg = complete_config(actioncfg, config)
+            if not target_is_current(actioncfg['path'], crt_file):
+                actions.add(cert_put(actioncfg))
 
     # run post-update actions
     for action in actions:

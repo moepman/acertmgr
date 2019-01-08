@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# acertmgr - ssl management functions
+# acertmgr - acme api functions
 # Copyright (c) Markus Hauschild & David Klaftenegger, 2016.
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
-import tools
-import base64
 import copy
 import json
-import os
 import re
 import time
 
@@ -18,6 +15,9 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+
+import tools
+from tools import byte_string_format
 
 try:
     from urllib.request import urlopen  # Python 3
@@ -28,37 +28,17 @@ except ImportError:
 # @brief create the header information for ACME communication
 # @param key the account key
 # @return the header for ACME
-def acme_header(key):
+def _prepare_header(key):
     numbers = key.public_key().public_numbers()
     header = {
         "alg": "RS256",
         "jwk": {
-            "e": tools.to_json_base64(tools.byte_string_format(numbers.e)),
+            "e": tools.to_json_base64(byte_string_format(numbers.e)),
             "kty": "RSA",
-            "n": tools.to_json_base64(tools.byte_string_format(numbers.n)),
+            "n": tools.to_json_base64(byte_string_format(numbers.n)),
         },
     }
     return header
-
-
-# @brief register an account over ACME
-# @param account_key the account key to register
-# @param CA the certificate authority to register with
-# @return True if new account was registered, False otherwise
-def register_account(account_key, ca):
-    header = acme_header(account_key)
-    code, result = send_signed(account_key, ca, ca + "/acme/new-reg", header, {
-        "resource": "new-reg",
-        "agreement": "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf",
-    })
-    if code == 201:
-        print("Registered!")
-        return True
-    elif code == 409:
-        print("Already registered!")
-        return False
-    else:
-        raise ValueError("Error registering: {0} {1}".format(code, result))
 
 
 # @brief helper function to make signed requests
@@ -67,7 +47,7 @@ def register_account(account_key, ca):
 # @param header the message header
 # @param payload the message
 # @return tuple of return code and request answer
-def send_signed(account_key, ca, url, header, payload):
+def _send_signed(account_key, ca, url, header, payload):
     payload64 = tools.to_json_base64(json.dumps(payload).encode('utf8'))
     protected = copy.deepcopy(header)
     protected["nonce"] = urlopen(ca + "/directory").headers['Replay-Nonce']
@@ -87,16 +67,36 @@ def send_signed(account_key, ca, url, header, payload):
         return getattr(e, "code", None), getattr(e, "read", e.__str__)()
 
 
+# @brief register an account over ACME
+# @param account_key the account key to register
+# @param CA the certificate authority to register with
+# @return True if new account was registered, False otherwise
+def register_account(account_key, ca):
+    header = _prepare_header(account_key)
+    code, result = _send_signed(account_key, ca, ca + "/acme/new-reg", header, {
+        "resource": "new-reg",
+        "agreement": "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf",
+    })
+    if code == 201:
+        print("Registered!")
+        return True
+    elif code == 409:
+        print("Already registered!")
+        return False
+    else:
+        raise ValueError("Error registering: {0} {1}".format(code, result))
+
+
 # @brief function to fetch certificate using ACME
 # @param account_key the account key in pyopenssl format
 # @param csr the certificate signing request in pyopenssl format
 # @param domains list of domains in the certificate, first is CN
-# @param acme_dir directory for ACME challanges
+# @param challenge_handlers a dict containing challenge for all given domains
 # @param CA which signing CA to use
 # @return the certificate in pyopenssl format
 # @note algorithm and parts of the code are from acme-tiny
-def get_crt_from_csr(account_key, csr, domains, acme_dir, ca):
-    header = acme_header(account_key)
+def get_crt_from_csr(account_key, csr, domains, challenge_handlers, ca):
+    header = _prepare_header(account_key)
     accountkey_json = json.dumps(header['jwk'], sort_keys=True, separators=(',', ':'))
     account_hash = hashes.Hash(hashes.SHA256(), backend=default_backend())
     account_hash.update(accountkey_json.encode('utf8'))
@@ -107,34 +107,26 @@ def get_crt_from_csr(account_key, csr, domains, acme_dir, ca):
         print("Verifying {0}...".format(domain))
 
         # get new challenge
-        code, result = send_signed(account_key, ca, ca + "/acme/new-authz", header, {
+        code, result = _send_signed(account_key, ca, ca + "/acme/new-authz", header, {
             "resource": "new-authz",
             "identifier": {"type": "dns", "value": domain},
         })
         if code != 201:
             raise ValueError("Error requesting challenges: {0} {1}".format(code, result))
 
-        # make the challenge file
-        challenge = [c for c in json.loads(result.decode('utf8'))['challenges'] if c['type'] == "http-01"][0]
+        # create the challenge
+        challenge = [c for c in json.loads(result.decode('utf8'))['challenges'] if
+                     c['type'] == challenge_handlers[domain].get_challenge_type()][0]
         token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
-        keyauthorization = "{0}.{1}".format(token, account_thumbprint)
-        wellknown_path = os.path.join(acme_dir, token)
-        with open(wellknown_path, "w") as wellknown_file:
-            wellknown_file.write(keyauthorization)
 
-        # check that the file is in place
-        wellknown_url = "http://{0}/.well-known/acme-challenge/{1}".format(domain, token)
-        try:
-            resp = urlopen(wellknown_url)
-            resp_data = resp.read().decode('utf8').strip()
-            assert resp_data == keyauthorization
-        except (IOError, AssertionError):
-            os.remove(wellknown_path)
-            raise ValueError("Wrote file to {0}, but couldn't download {1}".format(
-                wellknown_path, wellknown_url))
+        if domain not in challenge_handlers:
+            raise ValueError("No challenge handler given for domain: {0}".format(domain))
+
+        challenge_handlers[domain].create_challenge(domain, account_thumbprint, token)
 
         # notify challenge are met
-        code, result = send_signed(account_key, ca, challenge['uri'], header, {
+        keyauthorization = "{0}.{1}".format(token, account_thumbprint)
+        code, result = _send_signed(account_key, ca, challenge['uri'], header, {
             "resource": "challenge",
             "keyAuthorization": keyauthorization,
         })
@@ -153,7 +145,7 @@ def get_crt_from_csr(account_key, csr, domains, acme_dir, ca):
                 time.sleep(2)
             elif challenge_status['status'] == "valid":
                 print("{0} verified!".format(domain))
-                os.remove(wellknown_path)
+                challenge_handlers[domain].destroy_challenge(domain, account_thumbprint, token)
                 break
             else:
                 raise ValueError("{0} challenge did not pass: {1}".format(
@@ -162,7 +154,7 @@ def get_crt_from_csr(account_key, csr, domains, acme_dir, ca):
     # get the new certificate
     print("Signing certificate...")
     csr_der = csr.public_bytes(serialization.Encoding.DER)
-    code, result = send_signed(account_key, ca, ca + "/acme/new-cert", header, {
+    code, result = _send_signed(account_key, ca, ca + "/acme/new-cert", header, {
         "resource": "new-cert",
         "csr": tools.to_json_base64(csr_der),
     })
