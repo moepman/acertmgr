@@ -14,6 +14,7 @@ class AbstractChallengeHandler:
     def get_challenge_type():
         raise NotImplemented
 
+    # @return datetime after which the challenge is valid
     def create_challenge(self, domain, thumbprint, token):
         raise NotImplemented
 

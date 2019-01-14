@@ -17,7 +17,6 @@ import stat
 import subprocess
 import tempfile
 
-import acme
 import tools
 
 ACME_DIR = "/etc/acme"
@@ -38,6 +37,25 @@ def target_is_current(target, crt_file):
     target_date = os.path.getmtime(target)
     crt_date = os.path.getmtime(crt_file)
     return target_date >= crt_date
+
+
+# @brief create a authority for the given configuration
+# @param config the authority configuration options
+def create_authority(config):
+    if "apiversion" in config:
+        apiversion = config["apiversion"]
+    else:
+        apiversion = "v1"
+
+    acc_file = config['account_key']
+    if not os.path.isfile(acc_file):
+        print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
+        tools.new_rsa_key(acc_file)
+    acc_key = tools.read_key(acc_file)
+
+    authority_module = importlib.import_module("authority.{0}".format(apiversion))
+    authority_class = getattr(authority_module, "ACMEAuthority")
+    return authority_class(config.get('authority'),acc_key)
 
 
 # @brief create a challenge handler for the given configuration
@@ -65,10 +83,7 @@ def cert_get(domains, globalconfig, handlerconfigs):
         print("Server key not found at '{0}'. Creating RSA key.".format(key_file))
         tools.new_rsa_key(key_file)
 
-    acc_file = globalconfig['account_key']
-    if not os.path.isfile(acc_file):
-        print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
-        tools.new_rsa_key(acc_file)
+    acme = create_authority(globalconfig)
 
     filename = hashlib.md5(domains).hexdigest()
     _, csr_file = tempfile.mkstemp(".csr", "%s." % filename)
@@ -98,9 +113,8 @@ def cert_get(domains, globalconfig, handlerconfigs):
         key = tools.read_key(key_file)
         cr = tools.new_cert_request(domainlist, key)
         print("Reading account key...")
-        acc_key = tools.read_key(acc_file)
-        acme.register_account(acc_key, config['authority'])
-        crt = acme.get_crt_from_csr(acc_key, cr, domainlist, challenge_handlers, config['authority'])
+        acme.register_account()
+        crt = acme.get_crt_from_csr(cr, domainlist, challenge_handlers)
         with open(crt_file, "w") as crt_fd:
             crt_fd.write(tools.convert_cert_to_pem(crt))
 

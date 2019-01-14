@@ -20,6 +20,7 @@ import os
 import threading
 
 from modes.webdir import ChallengeHandler as WebChallengeHandler
+import datetime
 
 
 # @brief custom request handler for ACME challenges
@@ -74,6 +75,7 @@ class ChallengeHandler(WebChallengeHandler):
         self.server_thread = threading.Thread(target=start_standalone, args=(self.server,))
         os.chdir(self.challenge_directory)
         self.server_thread.start()
+        return datetime.datetime.now()
 
     def destroy_challenge(self, domain, thumbprint, token):
         self.server.shutdown()

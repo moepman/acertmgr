@@ -5,10 +5,11 @@
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
+import datetime
 import os
 
 from modes.abstract import AbstractChallengeHandler
-
+import datetime
 try:
     from urllib.request import urlopen  # Python 3
 except ImportError:
@@ -42,6 +43,7 @@ class ChallengeHandler(AbstractChallengeHandler):
             os.remove(wellknown_path)
             raise ValueError("Wrote file to {0}, but couldn't download {1}".format(
                 wellknown_path, wellknown_url))
+        return datetime.datetime.now()
 
     def destroy_challenge(self, domain, thumbprint, token):
         os.remove(os.path.join(self.challenge_directory, token))
