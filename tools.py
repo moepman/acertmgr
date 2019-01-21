@@ -11,12 +11,14 @@ import binascii
 import datetime
 import os
 import hashlib
+import io
+import six
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID,ExtensionOID
+from cryptography.x509.oid import NameOID, ExtensionOID
 
 try:
     from urllib.request import urlopen  # Python 3
@@ -32,8 +34,8 @@ class InvalidCertificateError(Exception):
 # @param cert_file the path to the certificate
 # @return the tuple of dates: (notBefore, notAfter)
 def get_cert_valid_times(cert_file):
-    with open(cert_file, 'r') as f:
-        cert_data = f.read()
+    with io.open(cert_file, 'r') as f:
+        cert_data = f.read().encode('utf-8')
     cert = x509.load_pem_x509_certificate(cert_data, default_backend())
     return cert.not_valid_before, cert.not_valid_after
 
@@ -64,8 +66,14 @@ def is_cert_valid(crt_file, ttl_days):
 # @param key the key to use with the certificate in pyopenssl format
 # @return the CSR in pyopenssl format
 def new_cert_request(names, key):
-    primary_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, names[0].decode('utf8'))])
-    all_names = x509.SubjectAlternativeName([x509.DNSName(name.decode('utf8')) for name in names])
+    # TODO: There has to be a better way to ensure correct text type (why typecheck, cryptography?)
+    primary_name = x509.Name([x509.NameAttribute(
+        NameOID.COMMON_NAME,
+        names[0] if isinstance(names[0], six.text_type) else names[0].decode('utf-8'))
+    ])
+    all_names = x509.SubjectAlternativeName([x509.DNSName(
+        name if isinstance(name, six.text_type) else name.decode('utf-8')
+    ) for name in names])
     req = x509.CertificateSigningRequestBuilder()
     req = req.subject_name(primary_name)
     req = req.add_extension(all_names, critical=False)
@@ -86,7 +94,7 @@ def new_rsa_key(path, key_size=4096):
         format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption()
     )
-    with open(path, 'wb') as pem_out:
+    with io.open(path, 'wb') as pem_out:
         pem_out.write(pem)
     try:
         os.chmod(path, int("0400", 8))
@@ -98,8 +106,8 @@ def new_rsa_key(path, key_size=4096):
 # @param cert_file certificate file
 # @param ca_file destination for the ca file
 def download_issuer_ca(cert_file, ca_file):
-    with open(cert_file, 'r') as f:
-        cert_data = f.read()
+    with io.open(cert_file, 'r') as f:
+        cert_data = f.read().encode('utf-8')
     cert = x509.load_pem_x509_certificate(cert_data, default_backend())
     aia = cert.extensions.get_extension_for_oid(ExtensionOID.AUTHORITY_INFORMATION_ACCESS)
 
@@ -116,7 +124,7 @@ def download_issuer_ca(cert_file, ca_file):
     cadata = urlopen(ca_issuers).read()
     cacert = x509.load_der_x509_certificate(cadata, default_backend())
     pem = cacert.public_bytes(encoding=serialization.Encoding.PEM)
-    with open(ca_file, 'wb') as pem_out:
+    with io.open(ca_file, 'wb') as pem_out:
         pem_out.write(pem)
 
 
@@ -131,8 +139,8 @@ def convert_cert_to_pem(cert):
 # @param path path to key file
 # @return the key in pyopenssl format
 def read_key(path):
-    with open(path, 'r') as f:
-        key_data = f.read()
+    with io.open(path, 'r') as f:
+        key_data = f.read().encode('utf-8')
     return serialization.load_pem_private_key(key_data, None, default_backend())
 
 
@@ -156,4 +164,4 @@ def byte_string_format(num):
 # @param data data to convert to id
 # @return unique id string
 def to_unique_id(data):
-    return hashlib.md5(data).hexdigest()
+    return hashlib.md5(data.encode('utf-8')).hexdigest()

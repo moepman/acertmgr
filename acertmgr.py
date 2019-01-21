@@ -6,7 +6,7 @@
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
-
+import io
 import grp
 import importlib
 import os
@@ -93,7 +93,7 @@ def cert_get(settings):
         print("Reading account key...")
         acme.register_account()
         crt = acme.get_crt_from_csr(cr, config['domainlist'], challenge_handlers)
-        with open(crt_file, "w") as crt_fd:
+        with io.open(crt_file, "w") as crt_fd:
             crt_fd.write(tools.convert_cert_to_pem(crt))
 
         #  if resulting certificate is valid: store in final location
@@ -127,20 +127,20 @@ def cert_put(settings):
     key_file = settings['key_file']
     crt_final = settings['cert_file']
 
-    with open(crt_path, "w+") as crt_fd:
+    with io.open(crt_path, "w+") as crt_fd:
         for fmt in crt_format:
             if fmt == "crt":
-                src_fd = open(crt_final, "r")
+                src_fd = io.open(crt_final, "r")
                 crt_fd.write(src_fd.read())
                 src_fd.close()
             if fmt == "key":
-                src_fd = open(key_file, "r")
+                src_fd = io.open(key_file, "r")
                 crt_fd.write(src_fd.read())
                 src_fd.close()
             if fmt == "ca":
                 if not os.path.isfile(ca_file):
                     raise FileNotFoundError("The CA certificate file (%s) is missing!" % ca_file)
-                src_fd = open(ca_file, "r")
+                src_fd = io.open(ca_file, "r")
                 crt_fd.write(src_fd.read())
                 src_fd.close()
             else:

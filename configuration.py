@@ -11,6 +11,7 @@ import io
 import os
 
 import tools
+import io
 
 ACME_DIR = "/etc/acme"
 ACME_CONF = os.path.join(ACME_DIR, "acme.conf")
@@ -143,7 +144,7 @@ def load():
     globalconfig = dict()
     # load global configuration
     if os.path.isfile(ACME_CONF):
-        with open(ACME_CONF) as config_fd:
+        with io.open(ACME_CONF) as config_fd:
             try:
                 import json
                 globalconfig = json.load(config_fd)
@@ -156,7 +157,7 @@ def load():
     # load domain configuration
     for config_file in os.listdir(ACME_CONFD):
         if config_file.endswith(".conf"):
-            with open(os.path.join(ACME_CONFD, config_file)) as config_fd:
+            with io.open(os.path.join(ACME_CONFD, config_file)) as config_fd:
                 try:
                     import json
                     for entry in json.load(config_fd).items():
