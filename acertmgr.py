@@ -101,6 +101,9 @@ def cert_get(settings):
             crt_final = settings['cert_file']
             shutil.copy2(crt_file, crt_final)
             os.chmod(crt_final, stat.S_IREAD)
+            # download current ca file for the new certificate if no static ca is configured
+            if "static_ca" in settings and not config['static_ca']:
+                tools.download_issuer_ca(crt_final, settings['ca_file'])
 
     finally:
         os.remove(csr_file)

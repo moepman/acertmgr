@@ -79,10 +79,14 @@ def parse_config_entry(entry, globalconfig):
     # SSL CA location
     ca_files = [x for x in entry if 'ca_file' in x]
     if len(ca_files) > 0:
+        config['static_ca'] = True
         config['ca_file'] = ca_files[0]
+    elif 'server_ca' in globalconfig:
+        config['static_ca'] = True
+        config['ca_file'] = globalconfig['server_ca']
     else:
-        config['ca_file'] = globalconfig.get('server_ca',
-                                             os.path.join(config['cert_dir'], "{}.ca".format(config['id'])))
+        config['static_ca'] = False
+        config['ca_file'] = os.path.join(config['cert_dir'], "{}.ca".format(config['id']))
 
     # SSL cert location
     cert_files = [x for x in entry if 'cert_file' in x]
