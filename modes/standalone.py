@@ -70,15 +70,12 @@ class ChallengeHandler(WebChallengeHandler):
         self.server_thread = None
         self.server = HTTPServer(("", port), ACMERequestHandler)
 
-    def create_challenge(self, domain, thumbprint, token):
-        WebChallengeHandler.create_challenge(self, domain, thumbprint, token)
+    def start_challenge(self):
         self.server_thread = threading.Thread(target=start_standalone, args=(self.server,))
         os.chdir(self.challenge_directory)
         self.server_thread.start()
-        return datetime.datetime.now()
 
-    def destroy_challenge(self, domain, thumbprint, token):
+    def stop_challenge(self):
         self.server.shutdown()
         self.server_thread.join()
         os.chdir(self.current_directory)
-        WebChallengeHandler.destroy_challenge(self, domain, thumbprint, token)

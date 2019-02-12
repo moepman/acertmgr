@@ -20,3 +20,11 @@ class AbstractChallengeHandler:
 
     def destroy_challenge(self, domain, thumbprint, token):
         raise NotImplemented
+
+    # Optional: Indicate when a challenge request is imminent
+    def start_challenge(self):
+        pass
+
+    # Optional: Indicate when a challenge response has been received
+    def stop_challenge(self):
+        pass

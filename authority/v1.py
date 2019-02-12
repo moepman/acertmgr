@@ -131,34 +131,40 @@ class ACMEAuthority(AbstractACMEAuthority):
                     time.sleep(1)
 
             for domain in domains:
-                print("Starting key authorization")
-                # notify challenge are met
-                keyauthorization = "{0}.{1}".format(tokens[domain], account_thumbprint)
-                code, result = self._send_signed(challenges[domain]['uri'], header, {
-                    "resource": "challenge",
-                    "keyAuthorization": keyauthorization,
-                })
-                if code != 202:
-                    raise ValueError("Error triggering challenge: {0} {1}".format(code, result))
+                challenge_handlers[domain].start_challenge()
+                try:
+                    print("Starting key authorization")
+                    # notify challenge are met
+                    keyauthorization = "{0}.{1}".format(tokens[domain], account_thumbprint)
+                    code, result = self._send_signed(challenges[domain]['uri'], header, {
+                        "resource": "challenge",
+                        "keyAuthorization": keyauthorization,
+                    })
+                    if code != 202:
+                        raise ValueError("Error triggering challenge: {0} {1}".format(code, result))
 
-                # wait for challenge to be verified
-                while True:
-                    try:
-                        resp = urlopen(challenges[domain]['uri'])
-                        challenge_status = json.loads(resp.read().decode('utf8'))
-                    except IOError as e:
-                        raise ValueError("Error checking challenge: {0} {1}".format(
-                            e.code, json.loads(e.read().decode('utf8'))))
-                    if challenge_status['status'] == "pending":
-                        time.sleep(2)
-                    elif challenge_status['status'] == "valid":
-                        print("{0} verified!".format(domain))
-                        break
-                    else:
-                        raise ValueError("{0} challenge did not pass: {1}".format(
-                            domain, challenge_status))
+                    # wait for challenge to be verified
+                    while True:
+                        try:
+                            resp = urlopen(challenges[domain]['uri'])
+                            challenge_status = json.loads(resp.read().decode('utf8'))
+                        except IOError as e:
+                            raise ValueError("Error checking challenge: {0} {1}".format(
+                                e.code, json.loads(e.read().decode('utf8'))))
+                        if challenge_status['status'] == "pending":
+                            time.sleep(2)
+                        elif challenge_status['status'] == "valid":
+                            print("{0} verified!".format(domain))
+                            break
+                        else:
+                            raise ValueError("{0} challenge did not pass: {1}".format(
+                                domain, challenge_status))
+                finally:
+                    challenge_handlers[domain].stop_challenge()
         finally:
-            for domain in domains:
+            # Destroy challenge handlers in reverse order to replay
+            # any saved state information in the handlers correctly
+            for domain in reversed(domains):
                 try:
                     challenge_handlers[domain].destroy_challenge(domain, account_thumbprint, tokens[domain])
                 except:
