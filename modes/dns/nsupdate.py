@@ -35,14 +35,13 @@ class ChallengeHandler(DNSChallengeHandler):
                 "A problem was encountered opening your keyfile, %s." % tsig_key_file)
         except AttributeError as exc:
             print(exc)
-            raise Exception("Failed to find first key Name")
+            raise Exception("Failed to find first key name")
 
     @staticmethod
     def _read_tsigkey(tsig_key_file, key_name):
         try:
             with io.open(tsig_key_file) as key_file:
                 key_struct = key_file.read()
-                key_file.close()
                 key_data = re.search(r"key \"?%s\"? {(.*?)};" % key_name, key_struct, re.DOTALL).group(1)
                 algorithm = re.search(r"algorithm ([a-zA-Z0-9_-]+?);", key_data, re.DOTALL).group(1)
                 tsig_secret = re.search(r"secret \"(.*?)\"", key_data, re.DOTALL).group(1)
@@ -52,7 +51,7 @@ class ChallengeHandler(DNSChallengeHandler):
                 "A problem was encountered opening your keyfile, %s." % tsig_key_file)
         except AttributeError as exc:
             print(exc)
-            raise Exception("Unable to decipher the keyname and secret from your key file.")
+            raise Exception("Unable to decipher the keyname and secret from your keyfile.")
 
         keyring = dns.tsigkeyring.from_text({
             key_name: tsig_secret
