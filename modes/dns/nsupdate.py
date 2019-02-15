@@ -8,6 +8,7 @@ import datetime
 import ipaddress
 import re
 import socket
+import time
 import io
 
 import dns
@@ -127,6 +128,7 @@ class ChallengeHandler(DNSChallengeHandler):
             self.keyalgorithm = config.get("nsupdate_keyalgorithm", DEFAULT_KEY_ALGORITHM)
         self.dns_server = config.get("nsupdate_server")
         self.dns_ttl = int(config.get("nsupdate_ttl", "60"))
+        self.dns_verify = config.get("nsupdate_verify", "true") == "true"
 
     def _determine_zone_and_nameserverip(self, domain):
         nameserver = self.dns_server
@@ -142,10 +144,33 @@ class ChallengeHandler(DNSChallengeHandler):
     def add_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
-        update.add(domain, self.dns_ttl, 'TXT', txtvalue)
+        update.add(domain, self.dns_ttl, dns.rdatatype.TXT, txtvalue)
         print('Adding \'{} 60 IN TXT "{}"\' to {}'.format(domain, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
-        return datetime.datetime.now() + datetime.timedelta(seconds=2 * self.dns_ttl)
+
+        verified = False
+        retry = 0
+        while self.dns_verify and not verified and retry < 5:
+            request = dns.message.make_query(domain, dns.rdatatype.TXT)
+            response = dns.query.tcp(request, nameserverip)
+            for rrset in response.answer:
+                for answer in rrset:
+                    if answer.to_text().strip('"') == txtvalue:
+                        verified = True
+                        print('Verified \'{} 60 IN TXT "{}"\' on {}'.format(domain,
+                                                                            txtvalue,
+                                                                            nameserverip))
+                        break
+            if not verified:
+                time.sleep(1)
+                retry += 1
+
+        if not self.dns_verify or verified:
+            return datetime.datetime.now() + datetime.timedelta(seconds=2 * self.dns_ttl)
+        else:
+            raise ValueError('Failed to verify \'{} 60 IN TXT "{}"\' on {}'.format(domain,
+                                                                                   txtvalue,
+                                                                                   nameserverip))
 
     def remove_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
