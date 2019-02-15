@@ -150,6 +150,6 @@ class ChallengeHandler(DNSChallengeHandler):
     def remove_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
-        update.delete(domain, 'TXT', txtvalue)
+        update.delete(domain, dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.TXT, txtvalue))
         print('Deleting \'{} 60 IN TXT "{}"\' from {}'.format(domain, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
