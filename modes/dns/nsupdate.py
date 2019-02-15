@@ -143,13 +143,13 @@ class ChallengeHandler(DNSChallengeHandler):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.add(domain, self.dns_ttl, 'TXT', txtvalue)
+        print('Adding \'{} 60 IN TXT "{}"\' to {}'.format(domain, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
-        print('Added \'{} 60 IN TXT "{}"\' to {}'.format(domain, txtvalue, nameserverip))
         return datetime.datetime.now() + datetime.timedelta(seconds=2 * self.dns_ttl)
 
     def remove_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.delete(domain, 'TXT', txtvalue)
+        print('Deleting \'{} 60 IN TXT "{}"\' from {}'.format(domain, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
-        print('Deleted \'{} 60 IN TXT "{}"\' from {}'.format(domain, txtvalue, nameserverip))
