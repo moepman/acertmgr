@@ -11,7 +11,6 @@ import io
 import os
 
 import tools
-import io
 
 ACME_DIR = "/etc/acme"
 ACME_CONF = os.path.join(ACME_DIR, "acme.conf")

@@ -6,9 +6,9 @@
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
-import io
 import grp
 import importlib
+import io
 import os
 import pwd
 import shutil

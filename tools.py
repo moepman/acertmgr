@@ -9,11 +9,11 @@
 import base64
 import binascii
 import datetime
-import os
 import hashlib
 import io
-import six
+import os
 
+import six
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization

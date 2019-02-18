@@ -5,11 +5,11 @@
 # Copyright (c) Rudolf Mayerhofer, 2019
 # available under the ISC license, see LICENSE
 import datetime
+import io
 import ipaddress
 import re
 import socket
 import time
-import io
 
 import dns
 import dns.query
@@ -18,7 +18,6 @@ import dns.tsigkeyring
 import dns.update
 
 from modes.dns.abstract import DNSChallengeHandler
-
 
 DEFAULT_KEY_ALGORITHM = "HMAC-MD5.SIG-ALG.REG.INT"
 

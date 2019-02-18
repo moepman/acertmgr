@@ -20,7 +20,6 @@ import os
 import threading
 
 from modes.webdir import ChallengeHandler as WebChallengeHandler
-import datetime
 
 
 # @brief custom request handler for ACME challenges

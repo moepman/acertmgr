@@ -9,7 +9,7 @@ import datetime
 import os
 
 from modes.abstract import AbstractChallengeHandler
-import datetime
+
 try:
     from urllib.request import urlopen  # Python 3
 except ImportError:
