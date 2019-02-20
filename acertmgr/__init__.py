@@ -34,20 +34,15 @@ def target_is_current(target, file):
 # @brief create a authority for the given configuration
 # @param settings the authority configuration options
 def create_authority(settings):
-    if "api" in settings:
-        api = settings["api"]
-    else:
-        api = "v1"
-
     acc_file = settings['account_key']
     if not os.path.isfile(acc_file):
         print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
         tools.new_rsa_key(acc_file)
     acc_key = tools.read_key(acc_file)
 
-    authority_module = importlib.import_module("acertmgr.authority.{0}".format(api))
+    authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))
     authority_class = getattr(authority_module, "ACMEAuthority")
-    return authority_class(settings.get('authority'), acc_key)
+    return authority_class(settings['authority'], acc_key)
 
 
 # @brief create a challenge handler for the given configuration
@@ -171,7 +166,7 @@ def main():
     # check certificate validity and obtain/renew certificates if needed
     for config in configs:
         cert_file = config['cert_file']
-        ttl_days = int(config.get('ttl_days', configuration.ACME_DEFAULT_TTL))
+        ttl_days = int(config['ttl_days'])
         if not tools.is_cert_valid(cert_file, ttl_days):
             cert_get(config)
             for cfg in config['actions']:

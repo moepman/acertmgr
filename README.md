@@ -44,11 +44,12 @@ While testing, you can use the acme-staging authority instead, in order to avoid
 Configuration
 -------------
 
-The main configuration is read from `/etc/acme/acme.conf`, domains for which certificates should be obtained/renewed should be configured in `/etc/acme/domains.d/*.conf`.
+Unless specified with a commandline parameter (see acertmgr.py --help) the optional global configuration is read from '/etc/acertmgr/acertmgr.conf'.
+Domains for which certificates should be obtained/renewed should be configured in `/etc/acertmgr/*.conf` (the global configuration is automatically excluded if it is in the same directory).
 
 All configuration files can use yaml (requires PyYAML) or json syntax.
 
-  * Example global configuration file (YAML syntax):
+  * Example optional global configuration file (YAML syntax):
 ```yaml
 ---
 # Required: Authority API endpoint to use
@@ -138,7 +139,7 @@ mail.example.com smtp.example.com webmail.example.net:
 
 ```
 
- * Example global configuration file (JSON syntax):
+ * Example optional global configuration file (JSON syntax):
 ```json
 ---
 {
@@ -150,11 +151,6 @@ mail.example.com smtp.example.com webmail.example.net:
 
 "webdir": "/var/www/acme-challenge/",
 "authority": "https://acme-v01.api.letsencrypt.org",
-
-"defaults": 
-  { 
-  "cafile": "/etc/acme/lets-encrypt-x3-cross-signed.pem"
-  }
 }
 ```
 

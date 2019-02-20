@@ -158,10 +158,3 @@ def byte_string_format(num):
     n = format(num, 'x')
     n = "0{0}".format(n) if len(n) % 2 else n
     return binascii.unhexlify(n)
-
-
-# @brief convert a string to an ID
-# @param data data to convert to id
-# @return unique id string
-def to_unique_id(data):
-    return hashlib.md5(data.encode('utf-8')).hexdigest()
