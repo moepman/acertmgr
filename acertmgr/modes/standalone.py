@@ -19,7 +19,7 @@ except ImportError:
 import os
 import threading
 
-from modes.webdir import ChallengeHandler as WebChallengeHandler
+from acertmgr.modes.webdir import ChallengeHandler as WebChallengeHandler
 
 
 # @brief custom request handler for ACME challenges

@@ -17,7 +17,7 @@ import dns.resolver
 import dns.tsigkeyring
 import dns.update
 
-from modes.dns.abstract import DNSChallengeHandler
+from acertmgr.modes.dns.abstract import DNSChallengeHandler
 
 DEFAULT_KEY_ALGORITHM = "HMAC-MD5.SIG-ALG.REG.INT"
 

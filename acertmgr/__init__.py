@@ -16,8 +16,7 @@ import stat
 import subprocess
 import tempfile
 
-import configuration
-import tools
+from acertmgr import configuration, tools
 
 
 # @brief check whether existing target file is still valid or source crt has been updated
@@ -46,7 +45,7 @@ def create_authority(settings):
         tools.new_rsa_key(acc_file)
     acc_key = tools.read_key(acc_file)
 
-    authority_module = importlib.import_module("authority.{0}".format(api))
+    authority_module = importlib.import_module("acertmgr.authority.{0}".format(api))
     authority_class = getattr(authority_module, "ACMEAuthority")
     return authority_class(settings.get('authority'), acc_key)
 
@@ -59,7 +58,7 @@ def create_challenge_handler(settings):
     else:
         mode = "standalone"
 
-    handler_module = importlib.import_module("modes.{0}".format(mode))
+    handler_module = importlib.import_module("acertmgr.modes.{0}".format(mode))
     handler_class = getattr(handler_module, "ChallengeHandler")
     return handler_class(settings)
 
@@ -162,7 +161,7 @@ def cert_put(settings):
     return crt_action
 
 
-if __name__ == "__main__":
+def main():
     # load config
     configs = configuration.load()
 

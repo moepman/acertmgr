@@ -8,7 +8,7 @@
 import datetime
 import os
 
-from modes.abstract import AbstractChallengeHandler
+from acertmgr.modes.abstract import AbstractChallengeHandler
 
 try:
     from urllib.request import urlopen  # Python 3

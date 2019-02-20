@@ -17,15 +17,15 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-import tools
-from tools import byte_string_format
+from acertmgr import tools
+from acertmgr.tools import byte_string_format
 
 try:
     from urllib.request import urlopen  # Python 3
 except ImportError:
     from urllib2 import urlopen  # Python 2
 
-from authority.acme import ACMEAuthority as AbstractACMEAuthority
+from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
 
 
 class ACMEAuthority(AbstractACMEAuthority):
