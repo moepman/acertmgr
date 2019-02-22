@@ -13,7 +13,7 @@ Requirements
 
   * Python (2.7+ and 3.3+ should work)
   * cryptography
-  
+
 Optional packages
 -----------------
 
@@ -50,6 +50,7 @@ Domains for which certificates should be obtained/renewed should be configured i
 All configuration files can use yaml (requires PyYAML) or json syntax.
 
   * Example optional global configuration file (YAML syntax):
+
 ```yaml
 ---
 # Required: Authority API endpoint to use
@@ -139,7 +140,8 @@ mail.example.com smtp.example.com webmail.example.net:
 
 ```
 
- * Example optional global configuration file (JSON syntax):
+  * Example optional global configuration file (JSON syntax):
+
 ```json
 ---
 {
