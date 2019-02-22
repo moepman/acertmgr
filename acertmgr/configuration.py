@@ -198,7 +198,7 @@ def load():
             except ValueError:
                 import yaml
                 config_fd.seek(0)
-                globalconfig = yaml.load(config_fd)
+                globalconfig = yaml.safe_load(config_fd)
 
     # create work directory if it does not exist
     if not os.path.isdir(work_dir):
@@ -218,7 +218,7 @@ def load():
                     except ValueError:
                         import yaml
                         config_fd.seek(0)
-                        for entry in yaml.load(config_fd).items():
+                        for entry in yaml.safe_load(config_fd).items():
                             config.append(parse_config_entry(entry, globalconfig, work_dir))
 
     return config
