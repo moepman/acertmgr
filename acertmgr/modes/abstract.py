@@ -12,14 +12,14 @@ class AbstractChallengeHandler:
 
     @staticmethod
     def get_challenge_type():
-        raise NotImplemented
+        raise NotImplementedError
 
     # @return datetime after which the challenge is valid
     def create_challenge(self, domain, thumbprint, token):
-        raise NotImplemented
+        raise NotImplementedError
 
     def destroy_challenge(self, domain, thumbprint, token):
-        raise NotImplemented
+        raise NotImplementedError
 
     # Optional: Indicate when a challenge request is imminent
     def start_challenge(self):
