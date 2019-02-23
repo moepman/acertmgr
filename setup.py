@@ -44,6 +44,7 @@ setup(
     url="https://github.com/moepman/acertmgr",
     packages=find_packages(),
     long_description=read('README.md'),
+    long_description_content_type="text/markdown",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: ISC License",
