@@ -24,6 +24,7 @@ DEFAULT_KEY_LENGTH = 4096  # bits
 DEFAULT_TTL = 15  # days
 DEFAULT_API = "v1"
 DEFAULT_AUTHORITY = "https://acme-v01.api.letsencrypt.org"
+DEFAULT_AUTHORITY_AGREEMENT = "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
 
 
 # @brief augment configuration with defaults
@@ -68,6 +69,13 @@ def parse_config_entry(entry, globalconfig, work_dir):
         config['authority'] = authorities[0]
     else:
         config['authority'] = globalconfig.get('authority', DEFAULT_AUTHORITY)
+
+    # Certificate authority agreement
+    authority_agreements = [x for x in entry if 'authority_agreement' in x]
+    if len(authority_agreements) > 0:
+        config['authority_agreement'] = authority_agreements[0]
+    else:
+        config['authority_agreement'] = globalconfig.get('authority_agreement', DEFAULT_AUTHORITY_AGREEMENT)
 
     # Account key
     acc_keys = [x for x in entry if 'account_key' in x]
