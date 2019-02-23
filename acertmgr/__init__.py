@@ -42,7 +42,7 @@ def create_authority(settings):
 
     authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))
     authority_class = getattr(authority_module, "ACMEAuthority")
-    return authority_class(settings['authority'], acc_key)
+    return authority_class(settings, acc_key)
 
 
 # @brief create a challenge handler for the given configuration

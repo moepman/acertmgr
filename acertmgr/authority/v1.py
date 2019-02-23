@@ -29,6 +29,14 @@ from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
 
 
 class ACMEAuthority(AbstractACMEAuthority):
+    # @brief Init class with config
+    # @param config Configuration data
+    # @param key Account key data
+    def __init__(self, config, key):
+        AbstractACMEAuthority.__init__(self, config, key)
+        self.ca = config['authority']
+        self.agreement = config['authority_agreement']
+
     # @brief create the header information for ACME communication
     # @param key the account key
     # @return the header for ACME
@@ -74,7 +82,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         header = self._prepare_header()
         code, result = self._send_signed(self.ca + "/acme/new-reg", header, {
             "resource": "new-reg",
-            "agreement": "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf",
+            "agreement": self.agreement,
         })
         if code == 201:
             print("Registered!")

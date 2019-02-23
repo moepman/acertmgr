@@ -9,11 +9,11 @@
 
 class ACMEAuthority:
     # @brief Init class with config
-    # @param ca Certificate authority uri
-    # @param account_key Account key file
-    def __init__(self, ca, key):
-        self.ca = ca
+    # @param config Configuration data
+    # @param key Account key data
+    def __init__(self, config, key):
         self.key = key
+        self.config = config
 
     # @brief register an account over ACME
     # @param account_key the account key to register
