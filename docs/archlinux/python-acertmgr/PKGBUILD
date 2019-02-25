@@ -1,0 +1,31 @@
+pkgname=python-acertmgr
+_pkgname=acertmgr
+pkgver=v0.0.0
+pkgrel=1
+pkgdesc='An automated certificate manager using ACME/letsencrypt'
+arch=('any')
+url='https://github.com/moepman/acertmgr'
+license=('ISC')
+depends=('python-cryptography')
+optdepends=('yaml: python-yaml'
+	        'dns.nsupdate: python-dnspython')
+makedepends=('git')
+conflicts=('python-acertmgr')
+provides=('python-acertmgr')
+source=('git://github.com/moepman/acertmgr.git')
+md5sums=('SKIP')
+
+pkgver() {
+  cd $_pkgname
+  git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cd $_pkgname
+  python setup.py build
+}
+
+package() {
+  cd $_pkgname
+  python setup.py install --root=${pkgdir} --optimize=1
+}
