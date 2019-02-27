@@ -67,5 +67,5 @@ setup(
         ],
     },
     data_files=[('readme', ['README.md']),
-                ('config', ['docs/acertmgr.conf','docs/domain.conf'])]
+                ('config', ['docs/acertmgr.conf', 'docs/domain.conf'])]
 )
