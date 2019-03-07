@@ -8,8 +8,8 @@
 
 import argparse
 import copy
-import io
 import hashlib
+import io
 import os
 
 # Backward compatiblity for older versions/installations of acertmgr
@@ -44,6 +44,15 @@ def complete_action_config(domainconfig, config):
     return domainconfig
 
 
+# @brief update config[name] with value from localconfig>globalconfig>default
+def update_config_value(config, name, localconfig, globalconfig, default):
+    values = [x for x in localconfig if name in x]
+    if len(values) > 0:
+        config[name] = values[0]
+    else:
+        config[name] = globalconfig.get(name, default)
+
+
 # @brief load the configuration from a file
 def parse_config_entry(entry, globalconfig, work_dir):
     config = dict()
@@ -57,46 +66,36 @@ def parse_config_entry(entry, globalconfig, work_dir):
     config['defaults'] = globalconfig.get('defaults', {})
 
     # API version
-    apis = [x for x in entry if 'api' in x]
-    if len(apis) > 0:
-        config['api'] = apis[0]
-    else:
-        config['api'] = globalconfig.get('api', DEFAULT_API)
+    update_config_value(config, 'api', entry, globalconfig, DEFAULT_API)
 
     # Certificate authority
-    authorities = [x for x in entry if 'authority' in x]
-    if len(authorities) > 0:
-        config['authority'] = authorities[0]
-    else:
-        config['authority'] = globalconfig.get('authority', DEFAULT_AUTHORITY)
+    update_config_value(config, 'authority', entry, globalconfig, DEFAULT_AUTHORITY)
 
     # Certificate authority agreement
-    authority_agreements = [x for x in entry if 'authority_agreement' in x]
-    if len(authority_agreements) > 0:
-        config['authority_agreement'] = authority_agreements[0]
-    else:
-        config['authority_agreement'] = globalconfig.get('authority_agreement', DEFAULT_AUTHORITY_AGREEMENT)
+    update_config_value(config, 'authority_agreement', entry, globalconfig, DEFAULT_AUTHORITY_AGREEMENT)
 
     # Account key
-    acc_keys = [x for x in entry if 'account_key' in x]
-    if len(acc_keys) > 0:
-        config['account_key'] = acc_keys[0]
-    else:
-        config['account_key'] = globalconfig.get('account_key', os.path.join(work_dir, "account.key"))
+    update_config_value(config, 'account_key', entry, globalconfig, os.path.join(work_dir, "account.key"))
 
     # Certificate directory
-    cert_dirs = [x for x in entry if 'cert_dir' in x]
-    if len(cert_dirs) > 0:
-        config['cert_dir'] = cert_dirs[0]
-    else:
-        config['cert_dir'] = globalconfig.get('cert_dir', work_dir)
+    update_config_value(config, 'cert_dir', entry, globalconfig, work_dir)
 
     # TTL days
-    cert_dirs = [x for x in entry if 'ttl_days' in x]
-    if len(cert_dirs) > 0:
-        config['ttl_days'] = cert_dirs[0]
-    else:
-        config['ttl_days'] = globalconfig.get('ttl_days', DEFAULT_TTL)
+    update_config_value(config, 'ttl_days', entry, globalconfig, DEFAULT_TTL)
+
+    # SSL cert location (with compatibility to older versions)
+    update_config_value(config, 'cert_file', entry, globalconfig,
+                        globalconfig.get('server_cert',
+                                         os.path.join(config['cert_dir'], "{}.crt".format(config['id']))))
+
+    # SSL key location (with compatibility to older versions)
+    update_config_value(config, 'key_file', entry, globalconfig,
+                        globalconfig.get('server_key',
+                                         os.path.join(config['cert_dir'], "{}.key".format(config['id']))))
+
+    # SSL key length (if key has to be (re-)generated, converted to int)
+    update_config_value(config, 'key_length', entry, globalconfig, DEFAULT_KEY_LENGTH)
+    config['key_length'] = int(config['key_length'])
 
     # SSL CA location
     ca_files = [x for x in entry if 'ca_file' in x]
@@ -109,29 +108,6 @@ def parse_config_entry(entry, globalconfig, work_dir):
     else:
         config['static_ca'] = False
         config['ca_file'] = os.path.join(config['cert_dir'], "{}.ca".format(config['id']))
-
-    # SSL cert location
-    cert_files = [x for x in entry if 'cert_file' in x]
-    if len(cert_files) > 0:
-        config['cert_file'] = cert_files[0]
-    else:
-        config['cert_file'] = globalconfig.get('server_cert',
-                                               os.path.join(config['cert_dir'], "{}.crt".format(config['id'])))
-
-    # SSL key location
-    key_files = [x for x in entry if 'key_file' in x]
-    if len(key_files) > 0:
-        config['key_file'] = key_files[0]
-    else:
-        config['key_file'] = globalconfig.get('server_key',
-                                              os.path.join(config['cert_dir'], "{}.key".format(config['id'])))
-
-    # SSL key length (if it has to be generated)
-    key_lengths = [x for x in entry if 'key_file' in x]
-    if len(key_lengths) > 0:
-        config['key_length'] = int(key_lengths[0])
-    else:
-        config['key_length'] = DEFAULT_KEY_LENGTH
 
     # Domain action configuration
     config['actions'] = list()
