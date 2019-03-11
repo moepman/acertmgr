@@ -19,6 +19,16 @@ import dns.update
 
 from acertmgr.modes.dns.abstract import DNSChallengeHandler
 
+REGEX_IP4 = r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$'
+REGEX_IP6 = r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}' \
+            r':|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}' \
+            r'(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}' \
+            r'|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}' \
+            r'(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})' \
+            r'|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}' \
+            r'|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}' \
+            r'(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}' \
+            r':((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$'
 DEFAULT_KEY_ALGORITHM = "HMAC-MD5.SIG-ALG.REG.INT"
 
 
@@ -65,13 +75,17 @@ class ChallengeHandler(DNSChallengeHandler):
     @staticmethod
     def _lookup_dns_server(domain_or_ip):
         try:
-            return str(ipaddress.ip_address(domain_or_ip))
+            if re.search(REGEX_IP4, domain_or_ip.strip()) or re.search(REGEX_IP6, domain_or_ip.strip()):
+                return str(ipaddress.ip_address(domain_or_ip))
         except ValueError:
-            result = socket.getaddrinfo(domain_or_ip, 53)
-            if len(result) > 0:
-                return result[0][4][0]
-            else:
-                raise ValueError("Could not lookup dns ip for {}".format(domain_or_ip))
+            pass
+
+        # No valid ip found so far, try to resolve
+        result = socket.getaddrinfo(domain_or_ip, 53)
+        if len(result) > 0:
+            return result[0][4][0]
+        else:
+            raise ValueError("Could not lookup dns ip for {}".format(domain_or_ip))
 
     @staticmethod
     def _get_soa(domain, nameserver=None):
