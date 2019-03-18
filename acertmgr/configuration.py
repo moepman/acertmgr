@@ -74,6 +74,9 @@ def parse_config_entry(entry, globalconfig, work_dir):
     # Certificate authority agreement
     update_config_value(config, 'authority_agreement', entry, globalconfig, DEFAULT_AUTHORITY_AGREEMENT)
 
+    # Certificate authority contact email addresses
+    update_config_value(config, 'authority_contact_email', entry, globalconfig, None)
+
     # Account key
     update_config_value(config, 'account_key', entry, globalconfig, os.path.join(work_dir, "account.key"))
 
