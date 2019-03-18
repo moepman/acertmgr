@@ -34,24 +34,12 @@ DEFAULT_KEY_ALGORITHM = "HMAC-MD5.SIG-ALG.REG.INT"
 
 class ChallengeHandler(DNSChallengeHandler):
     @staticmethod
-    def _find_first_key_name(tsig_key_file):
+    def _read_tsigkey(tsig_key_file, key_name=None):
         try:
             with io.open(tsig_key_file) as key_file:
                 key_struct = key_file.read()
-                return re.search(r"key \"?([^\"{ ]+?)\"? {.*};", key_struct, re.DOTALL).group(1)
-        except IOError as exc:
-            print(exc)
-            raise Exception(
-                "A problem was encountered opening your keyfile, %s." % tsig_key_file)
-        except AttributeError as exc:
-            print(exc)
-            raise Exception("Failed to find first key name")
-
-    @staticmethod
-    def _read_tsigkey(tsig_key_file, key_name):
-        try:
-            with io.open(tsig_key_file) as key_file:
-                key_struct = key_file.read()
+                if not key_name:
+                    key_name = re.search(r"key \"?([^\"{ ]+?)\"? {.*};", key_struct, re.DOTALL).group(1)
                 key_data = re.search(r"key \"?%s\"? {(.*?)};" % key_name, key_struct, re.DOTALL).group(1)
                 algorithm = re.search(r"algorithm ([a-zA-Z0-9_-]+?);", key_data, re.DOTALL).group(1)
                 tsig_secret = re.search(r"secret \"(.*?)\"", key_data, re.DOTALL).group(1)
@@ -128,11 +116,7 @@ class ChallengeHandler(DNSChallengeHandler):
     def __init__(self, config):
         DNSChallengeHandler.__init__(self, config)
         if 'nsupdate_keyfile' in config:
-            if 'nsupdate_keyname' in config:
-                nsupdate_keyname = config.get("nsupdate_keyname")
-            else:
-                nsupdate_keyname = self._find_first_key_name(config.get("nsupdate_keyfile"))
-
+            nsupdate_keyname = config.get("nsupdate_keyname", None)
             self.keyring, self.keyalgorithm = self._read_tsigkey(config.get("nsupdate_keyfile"), nsupdate_keyname)
         else:
             self.keyring = dns.tsigkeyring.from_text({
