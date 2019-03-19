@@ -24,6 +24,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
     def __init__(self, config):
         AbstractChallengeHandler.__init__(self, config)
         self.dns_updatedomain = config.get("dns_updatedomain")
+        self.dns_ttl = int(config.get("dns_ttl",60))
 
     def _determine_challenge_domain(self, domain):
         if self.dns_updatedomain:

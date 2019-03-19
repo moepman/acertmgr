@@ -124,7 +124,6 @@ class ChallengeHandler(DNSChallengeHandler):
             })
             self.keyalgorithm = config.get("nsupdate_keyalgorithm", DEFAULT_KEY_ALGORITHM)
         self.dns_server = config.get("nsupdate_server")
-        self.dns_ttl = int(config.get("nsupdate_ttl", "60"))
         self.dns_verify = config.get("nsupdate_verify", "true") == "true"
 
     def _determine_zone_and_nameserverip(self, domain):
@@ -142,7 +141,7 @@ class ChallengeHandler(DNSChallengeHandler):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.add(domain, self.dns_ttl, dns.rdatatype.TXT, txtvalue)
-        print('Adding \'{} 60 IN TXT "{}"\' to {}'.format(domain, txtvalue, nameserverip))
+        print('Adding \'{} {} IN TXT "{}"\' to {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
 
         verified = False
@@ -154,7 +153,8 @@ class ChallengeHandler(DNSChallengeHandler):
                 for answer in rrset:
                     if answer.to_text().strip('"') == txtvalue:
                         verified = True
-                        print('Verified \'{} 60 IN TXT "{}"\' on {}'.format(domain,
+                        print('Verified \'{} {} IN TXT "{}"\' on {}'.format(domain,
+                                                                            self.dns_ttl,
                                                                             txtvalue,
                                                                             nameserverip))
                         break
@@ -163,9 +163,11 @@ class ChallengeHandler(DNSChallengeHandler):
                 retry += 1
 
         if not self.dns_verify or verified:
+            # Return a valid time at twice the given TTL (to allow DNS to propagate)
             return datetime.datetime.now() + datetime.timedelta(seconds=2 * self.dns_ttl)
         else:
-            raise ValueError('Failed to verify \'{} 60 IN TXT "{}"\' on {}'.format(domain,
+            raise ValueError('Failed to verify \'{} {} IN TXT "{}"\' on {}'.format(domain,
+                                                                                   self.dns_ttl,
                                                                                    txtvalue,
                                                                                    nameserverip))
 
