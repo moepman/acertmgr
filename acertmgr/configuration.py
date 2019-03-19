@@ -166,7 +166,7 @@ def load():
     # Determine work directory...
     if args.work_dir:
         work_dir = args.work_dir
-    elif os.path.isdir(LEGACY_WORK_DIR):
+    elif os.path.isdir(LEGACY_WORK_DIR) and domain_config_dir == LEGACY_CONF_DIR:
         work_dir = LEGACY_WORK_DIR
     else:
         # .. or use the domain configuration directory otherwise
