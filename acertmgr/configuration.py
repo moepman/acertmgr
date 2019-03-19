@@ -192,9 +192,11 @@ def load():
     config = list()
     if os.path.isdir(domain_config_dir):
         for domain_config_file in os.listdir(domain_config_dir):
+            domain_config_file = os.path.join(domain_config_dir, domain_config_file)
             # check file extension and skip if global config file
-            if domain_config_file.endswith(".conf") and domain_config_file != global_config_file:
-                with io.open(os.path.join(domain_config_dir, domain_config_file)) as config_fd:
+            if domain_config_file.endswith(".conf") and \
+                    os.path.abspath(domain_config_file) != os.path.abspath(global_config_file):
+                with io.open(domain_config_file) as config_fd:
                     try:
                         import json
                         for entry in json.load(config_fd).items():
