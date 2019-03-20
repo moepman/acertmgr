@@ -35,7 +35,7 @@ class ACMEAuthority(AbstractACMEAuthority):
     def __init__(self, config, key):
         AbstractACMEAuthority.__init__(self, config, key)
         self.ca = config['authority']
-        self.agreement = config['authority_agreement']
+        self.agreement = config['authority_tos_agreement']
 
     # @brief create the header information for ACME communication
     # @param key the account key

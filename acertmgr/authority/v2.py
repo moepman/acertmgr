@@ -34,7 +34,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         AbstractACMEAuthority.__init__(self, config, key)
         # Initialize config vars
         self.ca = config['authority']
-        self.agreement = str(config.get('authority_agreement')) == 'true'
+        self.tos_agreed = str(config.get('authority_tos_agreement')).lower() == 'true'
         contact_email = config.get('authority_contact_email')
         if contact_email is None:
             self.contact = None
@@ -128,7 +128,7 @@ class ACMEAuthority(AbstractACMEAuthority):
     def register_account(self):
         protected = copy.deepcopy(self.account_protected)
         payload = {
-            "termsOfServiceAgreed": self.agreement,
+            "termsOfServiceAgreed": self.tos_agreed,
             "onlyReturnExisting": False,
         }
         if self.contact:

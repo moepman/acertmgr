@@ -41,6 +41,8 @@ You can optionally provide the key files for the ACME protocol, if you do not th
 Finally, you need to setup the configuration files, as shown in the next section.
 While testing, you can use the acme-staging authority instead, in order to avoid issuing too many certificates.
 
+Authorities (e.g. our default Let's Encrypt) will require you to accept their Terms of Service. This can be done either in the optional global config file and/or via a commandline parameter (see acertmgr.py --help).
+
 Configuration
 -------------
 
@@ -58,12 +60,12 @@ All configuration files can use yaml (requires PyYAML) or json syntax.
 #api: v1
 #authority: "https://acme-v01.api.letsencrypt.org"
 #authority: "https://acme-staging.api.letsencrypt.org"
-#authority_agreement: "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
+#authority_tos_agreement: "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
 # Current (default) ACME v2 API with options:
 #api: v2
 #authority: "https://acme-v02.api.letsencrypt.org"
 #authority: "https://acme-staging-v02.api.letsencrypt.org"
-#authority_agreement: "True" # Indicates you agree to the ToS stated by the API provider
+authority_tos_agreement: "true" # Indicates you agree to the ToS stated by the API provider
 #authority_contact_email: "foo@b.ar" # For single addresses
 #authority_contact_email:            # For multiple addresses
 #  - "foo@b.ar"

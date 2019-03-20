@@ -24,7 +24,7 @@ DEFAULT_KEY_LENGTH = 4096  # bits
 DEFAULT_TTL = 30  # days
 DEFAULT_API = "v2"
 DEFAULT_AUTHORITY = "https://acme-v02.api.letsencrypt.org"
-DEFAULT_AUTHORITY_AGREEMENT = "True"
+LEGACY_AUTHORITY_TOS_AGREEMENT = "true"
 
 
 # @brief augment configuration with defaults
@@ -54,7 +54,7 @@ def update_config_value(config, name, localconfig, globalconfig, default):
 
 
 # @brief load the configuration from a file
-def parse_config_entry(entry, globalconfig, work_dir):
+def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     config = dict()
 
     # Basic domain information
@@ -71,8 +71,8 @@ def parse_config_entry(entry, globalconfig, work_dir):
     # Certificate authority
     update_config_value(config, 'authority', entry, globalconfig, DEFAULT_AUTHORITY)
 
-    # Certificate authority agreement
-    update_config_value(config, 'authority_agreement', entry, globalconfig, DEFAULT_AUTHORITY_AGREEMENT)
+    # Certificate authority ToS agreement
+    update_config_value(config, 'authority_tos_agreement', entry, globalconfig, authority_tos_agreement)
 
     # Certificate authority contact email addresses
     update_config_value(config, 'authority_contact_email', entry, globalconfig, None)
@@ -148,6 +148,8 @@ def load():
                         help="domain configuration directory (default='{}')".format(DEFAULT_CONF_DIR))
     parser.add_argument("-w", "--work-dir", nargs="?",
                         help="persistent work data directory (default=config_dir)")
+    parser.add_argument("--authority-tos-agreement", "--tos-agreement", "--tos", nargs="?",
+                        help="Agree to the authorities Terms of Service (value required depends on authority)")
     args = parser.parse_args()
 
     # Determine global configuration file
@@ -174,6 +176,15 @@ def load():
     else:
         # .. or use the domain configuration directory otherwise
         work_dir = domain_config_dir
+
+    # Determine authority agreement
+    if args.authority_tos_agreement:
+        authority_tos_agreement = args.authority_tos_agreement
+    elif global_config_file == LEGACY_CONF_FILE:
+        # Old global config file assumes ToS are agreed
+        authority_tos_agreement = LEGACY_AUTHORITY_TOS_AGREEMENT
+    else:
+        authority_tos_agreement = None
 
     # load global configuration
     globalconfig = dict()
@@ -203,11 +214,11 @@ def load():
                     try:
                         import json
                         for entry in json.load(config_fd).items():
-                            config.append(parse_config_entry(entry, globalconfig, work_dir))
+                            config.append(parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement))
                     except ValueError:
                         import yaml
                         config_fd.seek(0)
                         for entry in yaml.safe_load(config_fd).items():
-                            config.append(parse_config_entry(entry, globalconfig, work_dir))
+                            config.append(parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement))
 
     return config
