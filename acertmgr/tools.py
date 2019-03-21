@@ -103,14 +103,10 @@ def new_rsa_key(path, key_size=4096):
 
 
 # @brief download the issuer ca for a given certificate
-# @param cert_file certificate file
-# @param ca_file destination for the ca file
-def download_issuer_ca(cert_file, ca_file):
-    with io.open(cert_file, 'r') as f:
-        cert_data = f.read().encode('utf-8')
-    cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+# @param cert certificate data
+# @returns ca certificate data
+def download_issuer_ca(cert):
     aia = cert.extensions.get_extension_for_oid(ExtensionOID.AUTHORITY_INFORMATION_ACCESS)
-
     ca_issuers = None
     for data in aia.value:
         if data.access_method == x509.OID_CA_ISSUERS:
@@ -118,14 +114,11 @@ def download_issuer_ca(cert_file, ca_file):
             break
 
     if not ca_issuers:
-        raise Exception("Could not determine issuer CA for {}".format(cert_file))
+        raise Exception("Could not determine issuer CA for given certificate: {}".format(cert))
 
-    print("Downloading CA certificate from {} to {}".format(ca_issuers, ca_file))
+    print("Downloading CA certificate from {}".format(ca_issuers))
     cadata = urlopen(ca_issuers).read()
-    cacert = x509.load_der_x509_certificate(cadata, default_backend())
-    pem = cacert.public_bytes(encoding=serialization.Encoding.PEM)
-    with io.open(ca_file, 'wb') as pem_out:
-        pem_out.write(pem)
+    return x509.load_der_x509_certificate(cadata, default_backend())
 
 
 # @brief convert certificate to PEM format

@@ -97,7 +97,7 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param csr the certificate signing request in pyopenssl format
     # @param domains list of domains in the certificate, first is CN
     # @param challenge_handlers a dict containing challenge for all given domains
-    # @return the certificate in pyopenssl format
+    # @return the certificate and corresponding ca as a tuple
     # @note algorithm and parts of the code are from acme-tiny
     def get_crt_from_csr(self, csr, domains, challenge_handlers):
         header = self._prepare_header()
@@ -194,4 +194,4 @@ class ACMEAuthority(AbstractACMEAuthority):
         # return signed certificate!
         print("Certificate signed!")
         cert = x509.load_der_x509_certificate(result, default_backend())
-        return cert
+        return cert, tools.download_issuer_ca(cert)

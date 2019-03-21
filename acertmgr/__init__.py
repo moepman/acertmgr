@@ -86,7 +86,7 @@ def cert_get(settings):
         cr = tools.new_cert_request(settings['domainlist'], key)
         print("Reading account key...")
         acme.register_account()
-        crt = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
+        crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
         with io.open(crt_file, "w") as crt_fd:
             crt_fd.write(tools.convert_cert_to_pem(crt))
 
@@ -95,10 +95,9 @@ def cert_get(settings):
             crt_final = settings['cert_file']
             shutil.copy2(crt_file, crt_final)
             os.chmod(crt_final, stat.S_IREAD)
-            # download current ca file for the new certificate if no static ca is configured
             if "static_ca" in settings and not settings['static_ca']:
-                tools.download_issuer_ca(crt_final, settings['ca_file'])
-
+                with io.open(settings['ca_file'], "w") as ca_fd:
+                    ca_fd.write(tools.convert_cert_to_pem(ca))
     finally:
         os.remove(csr_file)
         os.remove(crt_file)

@@ -146,7 +146,7 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param csr the certificate signing request in pyopenssl format
     # @param domains list of domains in the certificate, first is CN
     # @param challenge_handlers a dict containing challenge for all given domains
-    # @return the certificate
+    # @return the certificate and corresponding ca as a tuple
     # @note algorithm and parts of the code are from acme-tiny
     def get_crt_from_csr(self, csr, domains, challenge_handlers):
         accountkey_json = json.dumps(self.account_protected['jwk'], sort_keys=True, separators=(',', ':'))
@@ -239,7 +239,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             time.sleep(5)
             code, order, _ = self._request_url(order_url)
         if code >= 400:
-            raise ValueError("Order is still pending: {0} {1}".format(code, order))
+            raise ValueError("Order is still not ready to be finalized: {0} {1}".format(code, order))
 
         # get the new certificate
         print("Finalizing certificate")
@@ -257,6 +257,15 @@ class ACMEAuthority(AbstractACMEAuthority):
         # return certificate
         code, certificate, _ = self._request_url(finalize['certificate'], raw_result=True)
         if code >= 400:
-            raise ValueError("Error downloading certificate: {0} {1}".format(code, certificate))
-        cert = x509.load_pem_x509_certificate(certificate, default_backend())
-        return cert
+            raise ValueError("Error downloading certificate chain: {0} {1}".format(code, certificate))
+
+        cert_dict = re.match(("(?P<cert>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)\n\n"
+                              "(?P<ca>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)?"),
+                             certificate.decode('utf-8'), re.DOTALL).groupdict()
+        cert = x509.load_pem_x509_certificate(cert_dict['cert'].encode('utf-8'), default_backend())
+        if cert_dict['ca'] is None:
+            ca = tools.download_issuer_ca(cert)
+        else:
+            ca = x509.load_pem_x509_certificate(cert_dict['ca'].encode('utf-8'), default_backend())
+
+        return cert, ca
