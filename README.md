@@ -56,12 +56,14 @@ All configuration files can use yaml (requires PyYAML) or json syntax.
 
 ```yaml
 ---
+
 # Optional: Authority API endpoint to use
 # Legacy ACME v1 API with options:
 #api: v1
 #authority: "https://acme-v01.api.letsencrypt.org"
 #authority: "https://acme-staging.api.letsencrypt.org"
 #authority_tos_agreement: "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
+
 # Current (default) ACME v2 API with options:
 #api: v2
 #authority: "https://acme-v02.api.letsencrypt.org"
@@ -153,13 +155,11 @@ mail.example.com smtp.example.com webmail.example.net *.intra.example.com:
   perm: '400'
   format: crt,ca
   action: '/etc/init.d/postfix reload'
-
 ```
 
   * Example optional global configuration file (JSON syntax):
 
 ```json
----
 {
 "mode": "standalone",
 "port": "80",
@@ -175,7 +175,6 @@ mail.example.com smtp.example.com webmail.example.net *.intra.example.com:
   * Example domain configuration file (JSON syntax):
 
 ```json
----
 {
 "mail.example.com": [
 { "path": "/etc/postfix/ssl/mail.key",
