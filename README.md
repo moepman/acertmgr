@@ -19,6 +19,7 @@ Optional packages
 
   * PyYAML (when using config files in YAML format)
   * dnspython (required for the dns.nsupdate mode)
+  * idna (for automatically translating to the IDNA representation of unicode domain names)
 
 Initial Setup
 -------------

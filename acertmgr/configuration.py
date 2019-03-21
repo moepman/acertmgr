@@ -11,6 +11,7 @@ import copy
 import hashlib
 import io
 import os
+import json
 
 # Backward compatiblity for older versions/installations of acertmgr
 LEGACY_WORK_DIR = "/etc/acme"
@@ -61,6 +62,29 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     config['domains'], data = entry
     config['domainlist'] = config['domains'].split(' ')
     config['id'] = hashlib.md5(config['domains'].encode('utf-8')).hexdigest()
+
+    # Append IDNA domains to the domainlist and domains
+    if any(ord(c) >= 128 for c in config['domains']):
+        try:
+            import idna
+            domainlist = []
+            config['domaintranslation'] = {}
+            for domain in config['domainlist']:
+                if any(ord(c) >= 128 for c in domain):
+                    # Translate IDNA domain name from a unicode domain (handle wildcards separately)
+                    if domain.startswith('*.'):
+                        idna_domain = "*.{}".format(idna.encode(domain[2:]).decode('utf-8'))
+                    else:
+                        idna_domain = idna.encode(domain).decode('utf-8')
+                    domainlist.append(idna_domain)
+                    config['domaintranslation'][idna_domain] = domain
+                else:
+                    domainlist.append(domain)
+            # Refresh the domainlist and domains config value
+            config['domainlist'] = domainlist
+            config['domains'] = ' '.join(domainlist)
+        except ImportError:
+            print("Unicode domain found but IDNA names could not be translated due to missing idna module")
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -129,8 +153,9 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
         if len(genericfgs) > 0:
             cfg.update(genericfgs[0])
 
-        # Update handler config with more specific values
-        specificcfgs = [x for x in handlerconfigs if ('domain' in x and x['domain'] == domain)]
+        # Update handler config with more specific values (use original names for translated unicode domains)
+        _domain = config.get('domaintranslation', {}).get(domain, domain)
+        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == _domain]
         if len(specificcfgs) > 0:
             cfg.update(specificcfgs[0])
 
@@ -191,7 +216,6 @@ def load():
     if os.path.isfile(global_config_file):
         with io.open(global_config_file) as config_fd:
             try:
-                import json
                 globalconfig = json.load(config_fd)
             except ValueError:
                 import yaml
@@ -212,7 +236,6 @@ def load():
                     os.path.abspath(domain_config_file) != os.path.abspath(global_config_file):
                 with io.open(domain_config_file) as config_fd:
                     try:
-                        import json
                         for entry in json.load(config_fd).items():
                             config.append(parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement))
                     except ValueError:

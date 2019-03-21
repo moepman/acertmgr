@@ -8,6 +8,7 @@ url='https://github.com/moepman/acertmgr'
 license=('ISC')
 depends=('python2-cryptography')
 optdepends=('yaml: python2-yaml'
+            'idna: python2-idna'
 	        'dns.nsupdate: python2-dnspython')
 makedepends=('git')
 conflicts=('python-acertmgr')

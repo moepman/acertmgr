@@ -60,6 +60,9 @@ setup(
         "yaml": [
             "yaml",
         ],
+        "idna": [
+            "idna",
+        ],
     },
     entry_points={
         'console_scripts': [
