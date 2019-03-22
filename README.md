@@ -11,7 +11,7 @@ The main file acertmgr.py is intended to be run regularly (e.g. as daily cron jo
 Requirements
 ------------
 
-  * Python (2.7+ and 3.3+ should work)
+  * Python (2.7+ and 3.5+ should work)
   * cryptography
 
 Optional packages
@@ -25,7 +25,7 @@ Initial Setup
 -------------
 
 You should decide which challenge mode you want to use with acertmgr:
-  * webdir: In this mode, challenges are put into a directory, and served by an existing webserver
+  * webdir: In this mode, responses to challenges are put into a directory, to be served by an existing webserver
   * standalone: In this mode, challenges are completed by acertmgr directly.
     This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port
   * webdir/standalone: Make sure that the `webdir` directory exists in both cases (Note: the standalone webserver does not yet serve the files in situation)
@@ -33,9 +33,9 @@ You should decide which challenge mode you want to use with acertmgr:
   * dns.* (Alias mode): Can be used similar to the above but allows redirection of _acme-challenge.<domain> to any other (updatable domain) defined in dns_updatedomain via CNAME (e.g. _acme-challenge.example.net IN CNAME bla.foo.bar with config dns_updatedomain="bla.foo.bar" in config)
   * dns.nsupdate: Updates the TXT record using RFC2136 (with dnspython)
 
-You can optionally provide the key files for the ACME protocol, if you do not they will be automatically created:
-  * The account key is expected at `/etc/acertmgr/account.key`
-  * The domain key is expected at `/etc/acertmgr/server.key` (Note: only one domain key is required for all domains used in the same instance of acertmgr)
+You can optionally provide the private key files to be used with the ACME protocol (if you do not they will be automatically created):
+  * The account private key is expected at `/etc/acertmgr/account.key` (used to register an account with the authorities server)
+  * The domain private key is expected at `/etc/acertmgr/server.key` (Note: only one domain key is required for all domains used in the same instance of acertmgr)
   * If you are missing these keys, they will be created for you or you can create them using `openssl genrsa 4096 > /etc/acertmgr/account.key` and `openssl genrsa 4096 > /etc/acertmgr/server.key` respectively
   * Do not forget to set proper permissions of the keys using `chmod 0400 /etc/acertmgr/*.key`
 
@@ -92,6 +92,7 @@ authority_tos_agreement: "true" # Indicates you agree to the ToS stated by the A
 ```yaml
 ---
 
+# this will save the the key and certificate chain seperately
 mail.example.com:
 - path: /etc/postfix/ssl/mail.key
   user: root
@@ -106,6 +107,7 @@ mail.example.com:
   format: crt,ca
   action: '/etc/init.d/postfix reload'
 
+# this will combine the key and certificate chain into a single file
 jabber.example.com:
 - path: /etc/ejabberd/server.pem
   user: jabber
