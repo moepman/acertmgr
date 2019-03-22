@@ -44,7 +44,15 @@ class ACMEAuthority(AbstractACMEAuthority):
             self.contact = ["mailto:{}".format(contact_email)]
 
         # Initialize runtime vars
-        _, self.directory, _ = self._request_url(self.ca + '/directory')
+        code, self.directory, _ = self._request_url(self.ca + '/directory')
+        if code >= 400 or not self.directory:
+            self.directory = {
+                "meta": {},
+                "newAccount": "{}/acme/new-acct".format(self.ca),
+                "newNonce": "{}/acme/new-nonce".format(self.ca),
+                "newOrder": "{}/acme/new-order".format(self.ca),
+            }
+            print("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory))
         self._request_endpoint('newNonce')  # cache the first nonce
 
         # @todo: Add support for key-types other than RSA
