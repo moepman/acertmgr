@@ -175,11 +175,8 @@ class ACMEAuthority(AbstractACMEAuthority):
             for domain in reversed(domains):
                 try:
                     challenge_handlers[domain].destroy_challenge(domain, account_thumbprint, tokens[domain])
-                except (KeyboardInterrupt, SystemError, SystemExit):
-                    # Re-raise runtime/system exceptions
-                    raise
-                except:
-                    pass
+                except Exception as e:
+                    print('Challenge destruction failed: {}'.format(e))
 
         # get the new certificate
         print("Signing certificate...")

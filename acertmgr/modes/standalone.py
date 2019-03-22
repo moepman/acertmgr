@@ -36,13 +36,15 @@ class ACMERequestHandler(SimpleHTTPRequestHandler):
     #          webservers.
     def translate_path(self, path):
         spath = path.split('/')
-        assert (spath[0] == '')
+        if spath[0] != '':
+            raise ValueError("spath should be '' is {}".format(spath[0]))
         spath = spath[1:]
         if spath[0] == '.well-known':
             spath = spath[1:]
         if spath[0] == 'acme-challenge':
             spath = spath[1:]
-        assert (len(spath) == 1)
+            if len(spath) != 1:
+                raise ValueError("spath length {} != 1".format(len(spath)))
         spath.insert(0, '')
         path = '/'.join(spath)
         return SimpleHTTPRequestHandler.translate_path(self, path)

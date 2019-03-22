@@ -179,10 +179,8 @@ class ACMEAuthority(AbstractACMEAuthority):
                 if code >= 400:
                     raise ValueError("Error requesting authorization: {0} {1}".format(code, authorization))
 
-                authorization['_domain'] = \
-                    "*.{}".format(authorization['identifier']['value']) \
-                        if 'wildcard' in authorization and authorization['wildcard'] \
-                        else authorization['identifier']['value']
+                authorization['_domain'] = "*.{}".format(authorization['identifier']['value']) if \
+                    'wildcard' in authorization and authorization['wildcard'] else authorization['identifier']['value']
                 print("Authorizing {0}".format(authorization['_domain']))
 
                 # create the challenge
@@ -235,11 +233,8 @@ class ACMEAuthority(AbstractACMEAuthority):
                 try:
                     challenge_handlers[authorization['_domain']].destroy_challenge(
                         authorization['identifier']['value'], account_thumbprint, authorization['_token'])
-                except (KeyboardInterrupt, SystemError, SystemExit):
-                    # Re-raise runtime/system exceptions
-                    raise
-                except:
-                    pass
+                except Exception as e:
+                    print('Challenge destruction failed: {}'.format(e))
 
         # check order status and retry once
         code, order, _ = self._request_url(order_url)
@@ -267,8 +262,8 @@ class ACMEAuthority(AbstractACMEAuthority):
         if code >= 400:
             raise ValueError("Error downloading certificate chain: {0} {1}".format(code, certificate))
 
-        cert_dict = re.match(("(?P<cert>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)\n\n"
-                              "(?P<ca>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)?"),
+        cert_dict = re.match((r'(?P<cert>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)\n\n'
+                              r'(?P<ca>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)?'),
                              certificate.decode('utf-8'), re.DOTALL).groupdict()
         cert = x509.load_pem_x509_certificate(cert_dict['cert'].encode('utf-8'), default_backend())
         if cert_dict['ca'] is None:
