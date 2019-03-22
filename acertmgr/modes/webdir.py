@@ -7,13 +7,8 @@
 
 import datetime
 import os
-
+from acertmgr import tools
 from acertmgr.modes.abstract import AbstractChallengeHandler
-
-try:
-    from urllib.request import urlopen  # Python 3
-except ImportError:
-    from urllib2 import urlopen  # Python 2
 
 
 class ChallengeHandler(AbstractChallengeHandler):
@@ -36,7 +31,7 @@ class ChallengeHandler(AbstractChallengeHandler):
         # check that the file is in place
         wellknown_url = "http://{0}/.well-known/acme-challenge/{1}".format(domain, token)
         try:
-            resp = urlopen(wellknown_url)
+            resp = tools.get_url(wellknown_url)
             resp_data = resp.read().decode('utf8').strip()
             if resp_data != keyauthorization:
                 raise ValueError("keyauthorization and response data do NOT match")

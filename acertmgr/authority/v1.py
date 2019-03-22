@@ -18,13 +18,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from acertmgr import tools
-from acertmgr.tools import byte_string_format
-
-try:
-    from urllib.request import urlopen  # Python 3
-except ImportError:
-    from urllib2 import urlopen  # Python 2
-
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
 
 
@@ -45,9 +38,9 @@ class ACMEAuthority(AbstractACMEAuthority):
         header = {
             "alg": "RS256",
             "jwk": {
-                "e": tools.to_json_base64(byte_string_format(numbers.e)),
+                "e": tools.to_json_base64(tools.byte_string_format(numbers.e)),
                 "kty": "RSA",
-                "n": tools.to_json_base64(byte_string_format(numbers.n)),
+                "n": tools.to_json_base64(tools.byte_string_format(numbers.n)),
             },
         }
         return header
@@ -60,7 +53,7 @@ class ACMEAuthority(AbstractACMEAuthority):
     def _send_signed(self, url, header, payload):
         payload64 = tools.to_json_base64(json.dumps(payload).encode('utf8'))
         protected = copy.deepcopy(header)
-        protected["nonce"] = urlopen(self.ca + "/directory").headers['Replay-Nonce']
+        protected["nonce"] = tools.get_url(self.ca + "/directory").headers['Replay-Nonce']
         protected64 = tools.to_json_base64(json.dumps(protected).encode('utf8'))
         # @todo check why this padding is not working
         # pad = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
@@ -71,7 +64,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             "payload": payload64, "signature": tools.to_json_base64(out),
         })
         try:
-            resp = urlopen(url, data.encode('utf8'))
+            resp = tools.get_url(url, data.encode('utf8'))
             return resp.getcode(), resp.read()
         except IOError as e:
             return getattr(e, "code", None), getattr(e, "read", e.__str__)()
@@ -154,7 +147,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                     # wait for challenge to be verified
                     while True:
                         try:
-                            resp = urlopen(challenges[domain]['uri'])
+                            resp = tools.get_url(challenges[domain]['uri'])
                             challenge_status = json.loads(resp.read().decode('utf8'))
                         except IOError as e:
                             raise ValueError("Error checking challenge: {0} {1}".format(

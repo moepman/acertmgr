@@ -18,12 +18,6 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
-from acertmgr.tools import byte_string_format
-
-try:
-    from urllib.request import urlopen, Request  # Python 3
-except ImportError:
-    from urllib2 import urlopen, Request  # Python 2
 
 
 class ACMEAuthority(AbstractACMEAuthority):
@@ -62,8 +56,8 @@ class ACMEAuthority(AbstractACMEAuthority):
             "alg": self.algorithm,
             "jwk": {
                 "kty": "RSA",
-                "e": tools.to_json_base64(byte_string_format(numbers.e)),
-                "n": tools.to_json_base64(byte_string_format(numbers.n)),
+                "e": tools.to_json_base64(tools.byte_string_format(numbers.e)),
+                "n": tools.to_json_base64(tools.byte_string_format(numbers.n)),
             },
         }
         self.account_id = None  # will be updated to correct value during account registration
@@ -74,7 +68,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         if data:
             data = data.encode('utf-8')
 
-        resp = urlopen(Request(url, data=data, headers=header))
+        resp = tools.get_url(url, data, header)
 
         # Store next Replay-Nonce if it is in the header
         if 'Replay-Nonce' in resp.headers:

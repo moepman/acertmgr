@@ -20,13 +20,18 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID, ExtensionOID
 
 try:
-    from urllib.request import urlopen  # Python 3
+    from urllib.request import urlopen, Request  # Python 3
 except ImportError:
-    from urllib2 import urlopen  # Python 2
+    from urllib2 import urlopen, Request  # Python 2
 
 
 class InvalidCertificateError(Exception):
     pass
+
+
+# @brief wrapper for downloading an url
+def get_url(url, data=None, headers=None):
+    return urlopen(Request(url, data=data, headers={} if headers is None else headers))
 
 
 # @brief retrieve notBefore and notAfter dates of a certificate file
@@ -116,7 +121,7 @@ def download_issuer_ca(cert):
         raise Exception("Could not determine issuer CA for given certificate: {}".format(cert))
 
     print("Downloading CA certificate from {}".format(ca_issuers))
-    cadata = urlopen(ca_issuers).read()
+    cadata = get_url(ca_issuers).read()
     return x509.load_der_x509_certificate(cadata, default_backend())
 
 
