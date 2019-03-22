@@ -75,6 +75,11 @@ class ACMEAuthority(AbstractACMEAuthority):
             data = data.encode('utf-8')
 
         resp = urlopen(Request(url, data=data, headers=header))
+
+        # Store next Replay-Nonce if it is in the header
+        if 'Replay-Nonce' in resp.headers:
+            self.nonce = resp.headers['Replay-Nonce']
+
         if raw_result:
             return resp.getcode(), resp.read(), resp.headers
 
@@ -84,9 +89,6 @@ class ACMEAuthority(AbstractACMEAuthority):
                 body = json.loads(body.decode('utf-8'))
             except json.JSONDecodeError as e:
                 raise ValueError('Could not parse non-raw result (expected JSON)', e)
-        # Store next Replay-Nonce if it is in the header
-        if 'Replay-Nonce' in resp.headers:
-            self.nonce = resp.headers['Replay-Nonce']
 
         return resp.getcode(), body, resp.headers
 
