@@ -25,6 +25,8 @@ DEFAULT_KEY_LENGTH = 4096  # bits
 DEFAULT_TTL = 30  # days
 DEFAULT_API = "v2"
 DEFAULT_AUTHORITY = "https://acme-v02.api.letsencrypt.org"
+LEGACY_API = "v1"
+LEGACY_AUTHORITY = "https://acme-v01.api.letsencrypt.org"
 LEGACY_AUTHORITY_TOS_AGREEMENT = "true"
 
 
@@ -111,11 +113,15 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     update_config_value(config, 'ttl_days', entry, globalconfig, DEFAULT_TTL)
 
     # SSL cert location (with compatibility to older versions)
+    if 'server_cert' in globalconfig:
+        print("WARNING: Legacy configuration directive 'server_cert' used. Support will be removed in 1.0")
     update_config_value(config, 'cert_file', entry, globalconfig,
                         globalconfig.get('server_cert',
                                          os.path.join(config['cert_dir'], "{}.crt".format(config['id']))))
 
     # SSL key location (with compatibility to older versions)
+    if 'server_key' in globalconfig:
+        print("WARNING: Legacy configuration directive 'server_key' used. Support will be removed in 1.0")
     update_config_value(config, 'key_file', entry, globalconfig,
                         globalconfig.get('server_key',
                                          os.path.join(config['cert_dir'], "{}.key".format(config['id']))))
@@ -130,6 +136,7 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
         config['static_ca'] = True
         config['ca_file'] = ca_files[0]
     elif 'server_ca' in globalconfig:
+        print("WARNING: Legacy configuration directive 'server_ca' used. Support will be removed in 1.0")
         config['static_ca'] = True
         config['ca_file'] = globalconfig['server_ca']
     else:
@@ -181,6 +188,7 @@ def load():
     if args.config_file:
         global_config_file = args.config_file
     elif os.path.isfile(LEGACY_CONF_FILE):
+        print("WARNING: Legacy config file '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_FILE, DEFAULT_CONF_FILE))
         global_config_file = LEGACY_CONF_FILE
     else:
         global_config_file = DEFAULT_CONF_FILE
@@ -189,6 +197,7 @@ def load():
     if args.config_dir:
         domain_config_dir = args.config_dir
     elif os.path.isdir(LEGACY_CONF_DIR):
+        print("WARNING: Legacy config dir '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_DIR, DEFAULT_CONF_DIR))
         domain_config_dir = LEGACY_CONF_DIR
     else:
         domain_config_dir = DEFAULT_CONF_DIR
@@ -221,6 +230,11 @@ def load():
                 import yaml
                 config_fd.seek(0)
                 globalconfig = yaml.safe_load(config_fd)
+    if global_config_file == LEGACY_CONF_FILE:
+        if 'api' not in globalconfig:
+            globalconfig['api'] = LEGACY_API
+        if 'authority' not in globalconfig:
+            globalconfig['authority'] = LEGACY_AUTHORITY
 
     # create work directory if it does not exist
     if not os.path.isdir(work_dir):
