@@ -14,6 +14,7 @@ from acertmgr.modes.abstract import AbstractChallengeHandler
 class ChallengeHandler(AbstractChallengeHandler):
     def __init__(self, config):
         AbstractChallengeHandler.__init__(self, config)
+        self._verify_challenge = True
         self.challenge_directory = config.get("webdir", "/var/www/acme-challenge/")
         if not os.path.isdir(self.challenge_directory):
             raise FileNotFoundError("Challenge directory (%s) does not exist!" % self.challenge_directory)
@@ -30,15 +31,16 @@ class ChallengeHandler(AbstractChallengeHandler):
 
         # check that the file is in place
         wellknown_url = "http://{0}/.well-known/acme-challenge/{1}".format(domain, token)
-        try:
-            resp = tools.get_url(wellknown_url)
-            resp_data = resp.read().decode('utf8').strip()
-            if resp_data != keyauthorization:
-                raise ValueError("keyauthorization and response data do NOT match")
-        except (IOError, ValueError):
-            os.remove(wellknown_path)
-            raise ValueError("Wrote file to {0}, but couldn't download {1}".format(
-                wellknown_path, wellknown_url))
+        if self._verify_challenge:
+            try:
+                resp = tools.get_url(wellknown_url)
+                resp_data = resp.read().decode('utf8').strip()
+                if resp_data != keyauthorization:
+                    raise ValueError("keyauthorization and response data do NOT match")
+            except (IOError, ValueError):
+                os.remove(wellknown_path)
+                raise ValueError("Wrote file to {0}, but couldn't download {1}".format(
+                    wellknown_path, wellknown_url))
         return datetime.datetime.now()
 
     def destroy_challenge(self, domain, thumbprint, token):

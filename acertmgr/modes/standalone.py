@@ -63,6 +63,7 @@ HTTPServer.allow_reuse_address = True
 class ChallengeHandler(WebChallengeHandler):
     def __init__(self, config):
         WebChallengeHandler.__init__(self, config)
+        self._verify_challenge = False
         self.current_directory = os.getcwd()
         if "port" in config:
             port = int(config["port"])
