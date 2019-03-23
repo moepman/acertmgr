@@ -37,8 +37,8 @@ def create_authority(settings):
     acc_file = settings['account_key']
     if not os.path.isfile(acc_file):
         print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
-        tools.new_rsa_key(acc_file)
-    acc_key = tools.read_key(acc_file)
+        tools.new_account_key(acc_file)
+    acc_key = tools.read_pem_key(acc_file)
 
     authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))
     authority_class = getattr(authority_module, "ACMEAuthority")
@@ -67,7 +67,7 @@ def cert_get(settings):
     key_length = settings['key_length']
     if not os.path.isfile(key_file):
         print("SSL key not found at '{0}'. Creating {1} bit RSA key.".format(key_file, key_length))
-        tools.new_rsa_key(key_file, key_length)
+        tools.new_ssl_key(key_file, key_length)
 
     acme = create_authority(settings)
 
@@ -82,13 +82,13 @@ def cert_get(settings):
         challenge_handlers[domain] = create_challenge_handler(settings['handlers'][domain])
 
     try:
-        key = tools.read_key(key_file)
+        key = tools.read_pem_key(key_file)
         cr = tools.new_cert_request(settings['domainlist'], key)
         print("Reading account key...")
         acme.register_account()
         crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
         with io.open(crt_file, "w") as crt_fd:
-            crt_fd.write(tools.convert_cert_to_pem(crt))
+            crt_fd.write(tools.convert_cert_to_pem_str(crt))
 
         #  if resulting certificate is valid: store in final location
         if tools.is_cert_valid(crt_file, 60):
@@ -97,7 +97,7 @@ def cert_get(settings):
             os.chmod(crt_final, stat.S_IREAD)
             if "static_ca" in settings and not settings['static_ca'] and ca is not None:
                 with io.open(settings['ca_file'], "w") as ca_fd:
-                    ca_fd.write(tools.convert_cert_to_pem(ca))
+                    ca_fd.write(tools.convert_cert_to_pem_str(ca))
     finally:
         os.remove(csr_file)
         os.remove(crt_file)

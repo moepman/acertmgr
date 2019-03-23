@@ -16,7 +16,7 @@ import six
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.x509.oid import NameOID, ExtensionOID
 
 try:
@@ -39,8 +39,7 @@ def get_url(url, data=None, headers=None):
 # @return the tuple of dates: (notBefore, notAfter)
 def get_cert_valid_times(cert_file):
     with io.open(cert_file, 'r') as f:
-        cert_data = f.read().encode('utf-8')
-    cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+        cert = convert_pem_str_to_cert(f.read())
     return cert.not_valid_before, cert.not_valid_after
 
 
@@ -85,9 +84,15 @@ def new_cert_request(names, key):
     return req
 
 
-# @brief generate a new rsa key
+# @brief generate a new ssl key
 # @param path path where the new key file should be written
-def new_rsa_key(path, key_size=4096):
+def new_account_key(path, key_size=4096):
+    return new_ssl_key(path, key_size)
+
+
+# @brief generate a new ssl key
+# @param path path where the new key file should be written
+def new_ssl_key(path, key_size=4096):
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=key_size,
@@ -104,6 +109,15 @@ def new_rsa_key(path, key_size=4096):
         os.chmod(path, int("0400", 8))
     except OSError:
         print('Warning: Could not set file permissions on {0}!'.format(path))
+
+
+# @brief read a key from file
+# @param path path to key file
+# @return the key in pyopenssl format
+def read_pem_key(path):
+    with io.open(path, 'r') as f:
+        key_data = f.read().encode('utf-8')
+    return serialization.load_pem_private_key(key_data, None, default_backend())
 
 
 # @brief download the issuer ca for a given certificate
@@ -124,7 +138,7 @@ def download_issuer_ca(cert):
     print("Downloading CA certificate from {}".format(ca_issuers))
     resp = get_url(ca_issuers)
     code = resp.getcode()
-    if  code >= 400:
+    if code >= 400:
         print("Could not download issuer CA (error {}) for given certificate: {}".format(code, cert))
         return None
 
@@ -134,30 +148,51 @@ def download_issuer_ca(cert):
 # @brief convert certificate to PEM format
 # @param cert certificate object in pyopenssl format
 # @return the certificate in PEM format
-def convert_cert_to_pem(cert):
+def convert_cert_to_pem_str(cert):
     return cert.public_bytes(serialization.Encoding.PEM).decode('utf8')
 
 
-# @brief read a key from file
-# @param path path to key file
-# @return the key in pyopenssl format
-def read_key(path):
-    with io.open(path, 'r') as f:
-        key_data = f.read().encode('utf-8')
-    return serialization.load_pem_private_key(key_data, None, default_backend())
+# @brief load a PEM certificate from str
+def convert_pem_str_to_cert(certdata):
+    return x509.load_pem_x509_certificate(certdata.encode('utf8'), default_backend())
+
+
+# @brief serialize CSR to DER bytes
+def convert_csr_to_der_bytes(data):
+    return data.public_bytes(serialization.Encoding.DER)
+
+
+# @brief load a DER certificate from str
+def convert_der_bytes_to_cert(data):
+    return x509.load_der_x509_certificate(data, default_backend())
+
+
+# @brief sign string with key
+def signature_of_str(key, string):
+    # @todo check why this padding is not working
+    # pad = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
+    pad = padding.PKCS1v15()
+    return key.sign(string.encode('utf8'), pad, hashes.SHA256())
+
+
+# @brief hash a string
+def hash_of_str(string):
+    account_hash = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    account_hash.update(string.encode('utf8'))
+    return account_hash.finalize()
 
 
 # @brief helper function to base64 encode for JSON objects
-# @param b the string to encode
+# @param b the byte-string to encode
 # @return the encoded string
-def to_json_base64(b):
+def bytes_to_base64url(b):
     return base64.urlsafe_b64encode(b).decode('utf8').replace("=", "")
 
 
 # @brief convert numbers to byte-string
 # @param num number to convert
 # @return byte-string containing the number
-def byte_string_format(num):
+def number_to_byte_format(num):
     n = format(num, 'x')
     n = "0{0}".format(n) if len(n) % 2 else n
     return binascii.unhexlify(n)

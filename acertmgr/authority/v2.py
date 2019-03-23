@@ -11,11 +11,6 @@ import json
 import re
 import time
 
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-
 from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
 
@@ -56,8 +51,8 @@ class ACMEAuthority(AbstractACMEAuthority):
             "alg": self.algorithm,
             "jwk": {
                 "kty": "RSA",
-                "e": tools.to_json_base64(tools.byte_string_format(numbers.e)),
-                "n": tools.to_json_base64(tools.byte_string_format(numbers.n)),
+                "e": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.e)),
+                "n": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.n)),
             },
         }
         self.account_id = None  # will be updated to correct value during account registration
@@ -92,7 +87,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             payload = {}
         if not protected:
             protected = {}
-        payload64 = tools.to_json_base64(json.dumps(payload).encode('utf8'))
+        payload64 = tools.bytes_to_base64url(json.dumps(payload).encode('utf8'))
 
         # Request a new nonce if there is none in cache
         if not self.nonce:
@@ -104,13 +99,12 @@ class ACMEAuthority(AbstractACMEAuthority):
             protected["alg"] = self.algorithm
         if self.account_id:
             protected["kid"] = self.account_id
-        protected64 = tools.to_json_base64(json.dumps(protected).encode('utf8'))
-        pad = padding.PKCS1v15()
-        out = self.key.sign('.'.join([protected64, payload64]).encode('utf8'), pad, hashes.SHA256())
+        protected64 = tools.bytes_to_base64url(json.dumps(protected).encode('utf8'))
+        out = tools.signature_of_str(self.key, '.'.join([protected64, payload64]))
         data = json.dumps({
             "protected": protected64,
             "payload": payload64,
-            "signature": tools.to_json_base64(out),
+            "signature": tools.bytes_to_base64url(out),
         })
         try:
             return self._request_url(url, data, raw_result)
@@ -153,10 +147,8 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @return the certificate and corresponding ca as a tuple
     # @note algorithm and parts of the code are from acme-tiny
     def get_crt_from_csr(self, csr, domains, challenge_handlers):
-        accountkey_json = json.dumps(self.account_protected['jwk'], sort_keys=True, separators=(',', ':'))
-        account_hash = hashes.Hash(hashes.SHA256(), backend=default_backend())
-        account_hash.update(accountkey_json.encode('utf8'))
-        account_thumbprint = tools.to_json_base64(account_hash.finalize())
+        account_thumbprint = tools.bytes_to_base64url(
+            tools.hash_of_str(json.dumps(self.account_protected['jwk'], sort_keys=True, separators=(',', ':'))))
 
         print("Ordering certificate for {}".format(domains))
         identifiers = [{'type': 'dns', 'value': domain} for domain in domains]
@@ -242,9 +234,8 @@ class ACMEAuthority(AbstractACMEAuthority):
 
         # get the new certificate
         print("Finalizing certificate")
-        csr_der = csr.public_bytes(serialization.Encoding.DER)
         code, finalize, _ = self._request_acme_url(order['finalize'], {
-            "csr": tools.to_json_base64(csr_der),
+            "csr": tools.bytes_to_base64url(tools.convert_csr_to_der_bytes(csr)),
         })
         while code < 400 and (finalize.get('status') == 'pending' or finalize.get('status') == 'processing'):
             time.sleep(5)
@@ -261,10 +252,10 @@ class ACMEAuthority(AbstractACMEAuthority):
         cert_dict = re.match((r'(?P<cert>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)\n\n'
                               r'(?P<ca>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)?'),
                              certificate.decode('utf-8'), re.DOTALL).groupdict()
-        cert = x509.load_pem_x509_certificate(cert_dict['cert'].encode('utf-8'), default_backend())
+        cert = tools.convert_pem_str_to_cert(cert_dict['cert'])
         if cert_dict['ca'] is None:
             ca = tools.download_issuer_ca(cert)
         else:
-            ca = x509.load_pem_x509_certificate(cert_dict['ca'].encode('utf-8'), default_backend())
+            ca = tools.convert_pem_str_to_cert(cert_dict['ca'])
 
         return cert, ca

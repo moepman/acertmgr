@@ -12,11 +12,6 @@ import json
 import re
 import time
 
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-
 from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
 
@@ -38,9 +33,9 @@ class ACMEAuthority(AbstractACMEAuthority):
         header = {
             "alg": "RS256",
             "jwk": {
-                "e": tools.to_json_base64(tools.byte_string_format(numbers.e)),
+                "e": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.e)),
                 "kty": "RSA",
-                "n": tools.to_json_base64(tools.byte_string_format(numbers.n)),
+                "n": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.n)),
             },
         }
         return header
@@ -51,17 +46,14 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param payload the message
     # @return tuple of return code and request answer
     def _send_signed(self, url, header, payload):
-        payload64 = tools.to_json_base64(json.dumps(payload).encode('utf8'))
+        payload64 = tools.bytes_to_base64url(json.dumps(payload).encode('utf8'))
         protected = copy.deepcopy(header)
         protected["nonce"] = tools.get_url(self.ca + "/directory").headers['Replay-Nonce']
-        protected64 = tools.to_json_base64(json.dumps(protected).encode('utf8'))
-        # @todo check why this padding is not working
-        # pad = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
-        pad = padding.PKCS1v15()
-        out = self.key.sign('.'.join([protected64, payload64]).encode('utf8'), pad, hashes.SHA256())
+        protected64 = tools.bytes_to_base64url(json.dumps(protected).encode('utf8'))
+        out = tools.signature_of_str(self.key, '.'.join([protected64, payload64]))
         data = json.dumps({
             "header": header, "protected": protected64,
-            "payload": payload64, "signature": tools.to_json_base64(out),
+            "payload": payload64, "signature": tools.bytes_to_base64url(out),
         })
         try:
             resp = tools.get_url(url, data.encode('utf8'))
@@ -94,10 +86,8 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @note algorithm and parts of the code are from acme-tiny
     def get_crt_from_csr(self, csr, domains, challenge_handlers):
         header = self._prepare_header()
-        accountkey_json = json.dumps(header['jwk'], sort_keys=True, separators=(',', ':'))
-        account_hash = hashes.Hash(hashes.SHA256(), backend=default_backend())
-        account_hash.update(accountkey_json.encode('utf8'))
-        account_thumbprint = tools.to_json_base64(account_hash.finalize())
+        account_thumbprint = tools.bytes_to_base64url(
+            tools.hash_of_str(json.dumps(header['jwk'], sort_keys=True, separators=(',', ':'))))
 
         challenges = dict()
         tokens = dict()
@@ -173,15 +163,14 @@ class ACMEAuthority(AbstractACMEAuthority):
 
         # get the new certificate
         print("Signing certificate...")
-        csr_der = csr.public_bytes(serialization.Encoding.DER)
         code, result = self._send_signed(self.ca + "/acme/new-cert", header, {
             "resource": "new-cert",
-            "csr": tools.to_json_base64(csr_der),
+            "csr": tools.bytes_to_base64url(tools.convert_csr_to_der_bytes(csr)),
         })
         if code != 201:
             raise ValueError("Error signing certificate: {0} {1}".format(code, result))
 
         # return signed certificate!
         print("Certificate signed!")
-        cert = x509.load_der_x509_certificate(result, default_backend())
+        cert = tools.convert_der_bytes_to_cert(result)
         return cert, tools.download_issuer_ca(cert)

@@ -9,8 +9,6 @@ import dns.query
 import dns.resolver
 import dns.tsigkeyring
 import dns.update
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
 
 from acertmgr import tools
 from acertmgr.modes.abstract import AbstractChallengeHandler
@@ -40,10 +38,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
 
     @staticmethod
     def _determine_txtvalue(thumbprint, token):
-        keyauthorization = "{0}.{1}".format(token, thumbprint)
-        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-        digest.update(keyauthorization.encode('utf8'))
-        return tools.to_json_base64(digest.finalize())
+        return tools.bytes_to_base64url(tools.hash_of_str("{0}.{1}".format(token, thumbprint)))
 
     def create_challenge(self, domain, thumbprint, token):
         domain = self._determine_challenge_domain(domain)
