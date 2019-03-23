@@ -95,7 +95,7 @@ def cert_get(settings):
             crt_final = settings['cert_file']
             shutil.copy2(crt_file, crt_final)
             os.chmod(crt_final, stat.S_IREAD)
-            if "static_ca" in settings and not settings['static_ca']:
+            if "static_ca" in settings and not settings['static_ca'] and ca is not None:
                 with io.open(settings['ca_file'], "w") as ca_fd:
                     ca_fd.write(tools.convert_cert_to_pem(ca))
     finally:

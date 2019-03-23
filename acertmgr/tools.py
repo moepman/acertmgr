@@ -118,11 +118,17 @@ def download_issuer_ca(cert):
             break
 
     if not ca_issuers:
-        raise Exception("Could not determine issuer CA for given certificate: {}".format(cert))
+        print("Could not determine issuer CA for given certificate: {}".format(cert))
+        return None
 
     print("Downloading CA certificate from {}".format(ca_issuers))
-    cadata = get_url(ca_issuers).read()
-    return x509.load_der_x509_certificate(cadata, default_backend())
+    resp = get_url(ca_issuers)
+    code = resp.getcode()
+    if  code >= 400:
+        print("Could not download issuer CA (error {}) for given certificate: {}".format(code, cert))
+        return None
+
+    return x509.load_der_x509_certificate(resp.read(), default_backend())
 
 
 # @brief convert certificate to PEM format
