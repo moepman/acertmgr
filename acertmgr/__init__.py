@@ -11,34 +11,22 @@ import importlib
 import io
 import os
 import pwd
-import shutil
 import stat
 import subprocess
-import tempfile
 
 from acertmgr import configuration, tools
-
-
-# @brief check whether existing target file is still valid or source crt has been updated
-# @param target string containing the path to the target file
-# @param file string containing the path to the certificate file
-# @return True if target file is at least as new as the certificate, False otherwise
-def target_is_current(target, file):
-    if not os.path.isfile(target):
-        return False
-    target_date = os.path.getmtime(target)
-    crt_date = os.path.getmtime(file)
-    return target_date >= crt_date
 
 
 # @brief create a authority for the given configuration
 # @param settings the authority configuration options
 def create_authority(settings):
     acc_file = settings['account_key']
-    if not os.path.isfile(acc_file):
-        print("Account key not found at '{0}'. Creating RSA key.".format(acc_file))
-        tools.new_account_key(acc_file)
-    acc_key = tools.read_pem_key(acc_file)
+    if os.path.isfile(acc_file):
+        print("Reading account key from {}".format(acc_file))
+        acc_key = tools.read_pem_file(acc_file, key=True)
+    else:
+        print("Account key not found at '{0}'. Creating key.".format(acc_file))
+        acc_key = tools.new_account_key(acc_file)
 
     authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))
     authority_class = getattr(authority_module, "ACMEAuthority")
@@ -63,44 +51,35 @@ def create_challenge_handler(settings):
 def cert_get(settings):
     print("Getting certificate for '%s'." % settings['domains'])
 
-    key_file = settings['key_file']
-    key_length = settings['key_length']
-    if not os.path.isfile(key_file):
-        print("SSL key not found at '{0}'. Creating {1} bit RSA key.".format(key_file, key_length))
-        tools.new_ssl_key(key_file, key_length)
-
     acme = create_authority(settings)
+    acme.register_account()
 
-    filename = settings['id']
-    _, csr_file = tempfile.mkstemp(".csr", "%s." % filename)
-    _, crt_file = tempfile.mkstemp(".crt", "%s." % filename)
-
-    # find challenge handlers for this certificate
+    # create challenge handlers for this certificate
     challenge_handlers = dict()
     for domain in settings['domainlist']:
         # Create the challenge handler
         challenge_handlers[domain] = create_challenge_handler(settings['handlers'][domain])
 
-    try:
-        key = tools.read_pem_key(key_file)
-        cr = tools.new_cert_request(settings['domainlist'], key)
-        print("Reading account key...")
-        acme.register_account()
-        crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
-        with io.open(crt_file, "w") as crt_fd:
-            crt_fd.write(tools.convert_cert_to_pem_str(crt))
+    # create ssl key
+    key_file = settings['key_file']
+    key_length = settings['key_length']
+    if os.path.isfile(key_file):
+        key = tools.read_pem_file(key_file, key=True)
+    else:
+        print("SSL key not found at '{0}'. Creating {1} bit key.".format(key_file, key_length))
+        key = tools.new_ssl_key(key_file, key_length)
 
-        #  if resulting certificate is valid: store in final location
-        if tools.is_cert_valid(crt_file, 60):
-            crt_final = settings['cert_file']
-            shutil.copy2(crt_file, crt_final)
-            os.chmod(crt_final, stat.S_IREAD)
-            if "static_ca" in settings and not settings['static_ca'] and ca is not None:
-                with io.open(settings['ca_file'], "w") as ca_fd:
-                    ca_fd.write(tools.convert_cert_to_pem_str(ca))
-    finally:
-        os.remove(csr_file)
-        os.remove(crt_file)
+    # create ssl csr
+    cr = tools.new_cert_request(settings['domainlist'], key)
+
+    # request cert with csr
+    crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
+
+    #  if resulting certificate is valid: store in final location
+    if tools.is_cert_valid(crt, settings['ttl_days']):
+        tools.write_pem_file(crt, settings['cert_file'], stat.S_IREAD)
+        if "static_ca" in settings and not settings['static_ca'] and ca is not None:
+            tools.write_pem_file(ca, settings['ca_file'])
 
 
 # @brief put new certificate in place
@@ -165,8 +144,7 @@ def main():
     # check certificate validity and obtain/renew certificates if needed
     for config in configs:
         cert_file = config['cert_file']
-        ttl_days = int(config['ttl_days'])
-        if not tools.is_cert_valid(cert_file, ttl_days):
+        if not os.path.isfile(cert_file) or not tools.is_cert_valid(cert_file, config['ttl_days']):
             cert_get(config)
         for cfg in config['actions']:
             if not tools.target_is_current(cfg['path'], cert_file):

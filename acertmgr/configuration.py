@@ -10,8 +10,8 @@ import argparse
 import copy
 import hashlib
 import io
-import os
 import json
+import os
 
 # Backward compatiblity for older versions/installations of acertmgr
 LEGACY_WORK_DIR = "/etc/acme"
@@ -111,6 +111,7 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
 
     # TTL days
     update_config_value(config, 'ttl_days', entry, globalconfig, DEFAULT_TTL)
+    config['ttl_days'] = int(config['ttl_days'])
 
     # SSL cert location (with compatibility to older versions)
     if 'server_cert' in globalconfig:

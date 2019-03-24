@@ -34,34 +34,20 @@ def get_url(url, data=None, headers=None):
     return urlopen(Request(url, data=data, headers={} if headers is None else headers))
 
 
-# @brief retrieve notBefore and notAfter dates of a certificate file
-# @param cert_file the path to the certificate
-# @return the tuple of dates: (notBefore, notAfter)
-def get_cert_valid_times(cert_file):
-    with io.open(cert_file, 'r') as f:
-        cert = convert_pem_str_to_cert(f.read())
-    return cert.not_valid_before, cert.not_valid_after
-
-
 # @brief check whether existing certificate is still valid or expiring soon
 # @param crt_file string containing the path to the certificate file
 # @param ttl_days the minimum amount of days for which the certificate must be valid
 # @return True if certificate is still valid for at least ttl_days, False otherwise
-def is_cert_valid(crt_file, ttl_days):
-    if not os.path.isfile(crt_file):
+def is_cert_valid(cert, ttl_days):
+    now = datetime.datetime.now()
+    if cert.not_valid_before > now:
+        raise InvalidCertificateError("Certificate seems to be from the future")
+
+    expiry_limit = now + datetime.timedelta(days=ttl_days)
+    if cert.not_valid_after < expiry_limit:
         return False
-    else:
-        (valid_from, valid_to) = get_cert_valid_times(crt_file)
 
-        now = datetime.datetime.now()
-        if valid_from > now:
-            raise InvalidCertificateError("Certificate seems to be from the future")
-
-        expiry_limit = now + datetime.timedelta(days=ttl_days)
-        if valid_to < expiry_limit:
-            return False
-
-        return True
+    return True
 
 
 # @brief create a certificate signing request
@@ -84,15 +70,15 @@ def new_cert_request(names, key):
     return req
 
 
-# @brief generate a new ssl key
-# @param path path where the new key file should be written
-def new_account_key(path, key_size=4096):
+# @brief generate a new account key
+# @param path path where the new key file should be written in PEM format (optional)
+def new_account_key(path=None, key_size=4096):
     return new_ssl_key(path, key_size)
 
 
 # @brief generate a new ssl key
-# @param path path where the new key file should be written
-def new_ssl_key(path, key_size=4096):
+# @param path path where the new key file should be written in PEM format (optional)
+def new_ssl_key(path=None, key_size=4096):
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=key_size,
@@ -103,21 +89,37 @@ def new_ssl_key(path, key_size=4096):
         format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption()
     )
-    with io.open(path, 'wb') as pem_out:
-        pem_out.write(pem)
-    try:
-        os.chmod(path, int("0400", 8))
-    except OSError:
-        print('Warning: Could not set file permissions on {0}!'.format(path))
+    if path is not None:
+        with io.open(path, 'wb') as pem_out:
+            pem_out.write(pem)
+        try:
+            os.chmod(path, int("0400", 8))
+        except OSError:
+            print('Warning: Could not set file permissions on {0}!'.format(path))
+    return private_key
 
 
 # @brief read a key from file
-# @param path path to key file
+# @param path path to file
+# @param key indicate whether we are loading a key
 # @return the key in pyopenssl format
-def read_pem_key(path):
+def read_pem_file(path, key=False):
     with io.open(path, 'r') as f:
-        key_data = f.read().encode('utf-8')
-    return serialization.load_pem_private_key(key_data, None, default_backend())
+        if key:
+            return serialization.load_pem_private_key(f.read().encode('utf-8'), None, default_backend())
+        else:
+            return convert_pem_str_to_cert(f.read())
+
+
+# @brief write cert data to PEM formatted file
+def write_pem_file(crt, path, perms=None):
+    with io.open(path, "w") as f:
+        f.write(convert_cert_to_pem_str(crt))
+    if perms:
+        try:
+            os.chmod(path, perms)
+        except OSError:
+            print('Warning: Could not set file permissions ({0}) on {1}!'.format(perms, path))
 
 
 # @brief download the issuer ca for a given certificate
@@ -196,3 +198,15 @@ def number_to_byte_format(num):
     n = format(num, 'x')
     n = "0{0}".format(n) if len(n) % 2 else n
     return binascii.unhexlify(n)
+
+
+# @brief check whether existing target file is still valid or source crt has been updated
+# @param target string containing the path to the target file
+# @param file string containing the path to the certificate file
+# @return True if target file is at least as new as the certificate, False otherwise
+def target_is_current(target, file):
+    if not os.path.isfile(target):
+        return False
+    target_date = os.path.getmtime(target)
+    crt_date = os.path.getmtime(file)
+    return target_date >= crt_date
