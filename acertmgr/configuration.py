@@ -51,7 +51,7 @@ def complete_action_config(domainconfig, config):
 def update_config_value(config, name, localconfig, globalconfig, default):
     values = [x for x in localconfig if name in x]
     if len(values) > 0:
-        config[name] = values[0]
+        config[name] = values[0][name]
     else:
         config[name] = globalconfig.get(name, default)
 
@@ -61,7 +61,7 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     config = dict()
 
     # Basic domain information
-    config['domains'], data = entry
+    config['domains'], localconfig = entry
     config['domainlist'] = config['domains'].split(' ')
     config['id'] = hashlib.md5(config['domains'].encode('utf-8')).hexdigest()
 
@@ -92,50 +92,50 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     config['defaults'] = globalconfig.get('defaults', {})
 
     # API version
-    update_config_value(config, 'api', entry, globalconfig, DEFAULT_API)
+    update_config_value(config, 'api', localconfig, globalconfig, DEFAULT_API)
 
     # Certificate authority
-    update_config_value(config, 'authority', entry, globalconfig, DEFAULT_AUTHORITY)
+    update_config_value(config, 'authority', localconfig, globalconfig, DEFAULT_AUTHORITY)
 
     # Certificate authority ToS agreement
-    update_config_value(config, 'authority_tos_agreement', entry, globalconfig, authority_tos_agreement)
+    update_config_value(config, 'authority_tos_agreement', localconfig, globalconfig, authority_tos_agreement)
 
     # Certificate authority contact email addresses
-    update_config_value(config, 'authority_contact_email', entry, globalconfig, None)
+    update_config_value(config, 'authority_contact_email', localconfig, globalconfig, None)
 
     # Account key
-    update_config_value(config, 'account_key', entry, globalconfig, os.path.join(work_dir, "account.key"))
+    update_config_value(config, 'account_key', localconfig, globalconfig, os.path.join(work_dir, "account.key"))
 
     # Certificate directory
-    update_config_value(config, 'cert_dir', entry, globalconfig, work_dir)
+    update_config_value(config, 'cert_dir', localconfig, globalconfig, work_dir)
 
     # TTL days
-    update_config_value(config, 'ttl_days', entry, globalconfig, DEFAULT_TTL)
+    update_config_value(config, 'ttl_days', localconfig, globalconfig, DEFAULT_TTL)
     config['ttl_days'] = int(config['ttl_days'])
 
     # Use a static cert request
-    update_config_value(config, 'csr_static', entry, globalconfig, "false")
+    update_config_value(config, 'csr_static', localconfig, globalconfig, "false")
 
     # SSL cert request location
-    update_config_value(config, 'csr_file', entry, globalconfig,
+    update_config_value(config, 'csr_file', localconfig, globalconfig,
                         os.path.join(config['cert_dir'], "{}.csr".format(config['id'])))
 
     # SSL cert location (with compatibility to older versions)
     if 'server_cert' in globalconfig:
         print("WARNING: Legacy configuration directive 'server_cert' used. Support will be removed in 1.0")
-    update_config_value(config, 'cert_file', entry, globalconfig,
+    update_config_value(config, 'cert_file', localconfig, globalconfig,
                         globalconfig.get('server_cert',
                                          os.path.join(config['cert_dir'], "{}.crt".format(config['id']))))
 
     # SSL key location (with compatibility to older versions)
     if 'server_key' in globalconfig:
         print("WARNING: Legacy configuration directive 'server_key' used. Support will be removed in 1.0")
-    update_config_value(config, 'key_file', entry, globalconfig,
+    update_config_value(config, 'key_file', localconfig, globalconfig,
                         globalconfig.get('server_key',
                                          os.path.join(config['cert_dir'], "{}.key".format(config['id']))))
 
     # SSL key length (if key has to be (re-)generated, converted to int)
-    update_config_value(config, 'key_length', entry, globalconfig, DEFAULT_KEY_LENGTH)
+    update_config_value(config, 'key_length', localconfig, globalconfig, DEFAULT_KEY_LENGTH)
     config['key_length'] = int(config['key_length'])
 
     # SSL CA location
@@ -153,12 +153,12 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
 
     # Domain action configuration
     config['actions'] = list()
-    for actioncfg in [x for x in data if 'path' in x]:
+    for actioncfg in [x for x in localconfig if 'path' in x]:
         config['actions'].append(complete_action_config(actioncfg, config))
 
     # Domain challenge handler configuration
     config['handlers'] = dict()
-    handlerconfigs = [x for x in data if 'mode' in x]
+    handlerconfigs = [x for x in localconfig if 'mode' in x]
     for domain in config['domainlist']:
         # Use global config as base handler config
         cfg = copy.deepcopy(globalconfig)
