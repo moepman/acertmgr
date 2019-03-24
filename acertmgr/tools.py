@@ -102,11 +102,14 @@ def new_ssl_key(path=None, key_size=4096):
 # @brief read a key from file
 # @param path path to file
 # @param key indicate whether we are loading a key
+# @param csr indicate whether we are loading a csr
 # @return the key in pyopenssl format
-def read_pem_file(path, key=False):
+def read_pem_file(path, key=False, csr=False):
     with io.open(path, 'r') as f:
         if key:
             return serialization.load_pem_private_key(f.read().encode('utf-8'), None, default_backend())
+        elif csr:
+            return x509.load_pem_x509_csr(f.read().encode('utf8'), default_backend())
         else:
             return convert_pem_str_to_cert(f.read())
 

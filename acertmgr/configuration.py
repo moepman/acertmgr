@@ -113,6 +113,13 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     update_config_value(config, 'ttl_days', entry, globalconfig, DEFAULT_TTL)
     config['ttl_days'] = int(config['ttl_days'])
 
+    # Use a static cert request
+    update_config_value(config, 'csr_static', entry, globalconfig, "false")
+
+    # SSL cert request location
+    update_config_value(config, 'csr_file', entry, globalconfig,
+                        os.path.join(config['cert_dir'], "{}.csr".format(config['id'])))
+
     # SSL cert location (with compatibility to older versions)
     if 'server_cert' in globalconfig:
         print("WARNING: Legacy configuration directive 'server_cert' used. Support will be removed in 1.0")

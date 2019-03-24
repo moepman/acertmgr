@@ -70,7 +70,14 @@ def cert_get(settings):
         key = tools.new_ssl_key(key_file, key_length)
 
     # create ssl csr
-    cr = tools.new_cert_request(settings['domainlist'], key)
+    csr_file = settings['csr_file']
+    if os.path.isfile(csr_file) and str(settings['csr_static']).lower() == 'true':
+        print('Loading CSR from {}'.format(csr_file))
+        cr = tools.read_pem_file(csr_file, csr=True)
+    else:
+        print('Generating CSR for {}'.format(settings['domainlist']))
+        cr = tools.new_cert_request(settings['domainlist'], key)
+        tools.write_pem_file(cr, csr_file)
 
     # request cert with csr
     crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
