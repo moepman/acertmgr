@@ -168,11 +168,13 @@ def main():
         ttl_days = int(config['ttl_days'])
         if not tools.is_cert_valid(cert_file, ttl_days):
             cert_get(config)
-            for cfg in config['actions']:
-                if not target_is_current(cfg['path'], cert_file):
-                    actions.add(cert_put(cfg))
+        for cfg in config['actions']:
+            if not tools.target_is_current(cfg['path'], cert_file):
+                print("Updating '{}' due to newer certificate".format(cfg['path']))
+                actions.add(cert_put(cfg))
 
     # run post-update actions
     for action in actions:
         if action is not None:
+            print("Running '{}' to trigger update for changes".format(action))
             subprocess.call(action.split())
