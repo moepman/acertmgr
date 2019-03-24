@@ -26,7 +26,7 @@ def determine_version():
         return version
     # Derive version from git
     try:
-        output = subprocess.check_output(['git', 'describe', '--tags', '--dirty'], cwd=dir_path)\
+        output = subprocess.check_output(['git', 'describe', '--tags', '--dirty'], cwd=dir_path) \
             .decode('utf-8').strip().split('-')
         if len(output) == 1:
             return output[0]
