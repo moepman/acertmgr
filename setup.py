@@ -84,6 +84,5 @@ setup(
             'acertmgr=acertmgr:main',
         ],
     },
-    data_files=[('readme', ['README.md']),
-                ('config', ['docs/acertmgr.conf', 'docs/domain.conf'])]
+    data_files=[('readme', ['README.md'])]
 )
