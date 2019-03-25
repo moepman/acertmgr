@@ -1,0 +1,83 @@
+{
+    "mail.example.com": [
+        {
+            "path": "/etc/postfix/ssl/mail.key",
+            "user": "root",
+            "group": "root",
+            "perm": "400",
+            "format": "key",
+            "action": "/etc/init.d/postfix reload"
+        },
+        {
+            "path": "/etc/postfix/ssl/mail.crt",
+            "user": "root",
+            "group": "root",
+            "perm": "400",
+            "format": "crt,ca",
+            "action": "/etc/init.d/postfix reload"
+        }
+    ],
+    "jabber.example.com": [
+        {
+            "path": "/etc/ejabberd/server.pem",
+            "user": "jabber",
+            "group": "jabber",
+            "perm": "400",
+            "format": "key,crt,ca",
+            "action": "/etc/init.d/ejabberd restart"
+        }
+    ],
+    "www.example.com example.com": [
+        {
+            "path": "/var/www/ssl/cert.pem",
+            "user": "apache",
+            "group": "apache",
+            "perm": "400",
+            "action": "/etc/init.d/apache2 reload",
+            "format": "crt,ca"
+        },
+        {
+            "path": "/var/www/ssl/key.pem",
+            "user": "apache",
+            "group": "apache",
+            "perm": "400",
+            "action": "/etc/init.d/apache2 reload",
+            "format": "key"
+        }
+    ],
+    "mail.example.com smtp.example.com webmail.example.net *.intra.example.com": [
+        {
+            "mode": "dns.nsupdate",
+            "dns_ttl": 120,
+            "csr_static": true,
+            "nsupdate_server": "ns1.example.com",
+            "nsupdate_keyname": "mail",
+            "nsupdate_keyvalue": "Test1234512359==",
+            "nsupdate_keyalgorithm": "HMAC-MD5.SIG-ALG.REG.INT"
+        },
+        {
+            "domain": "webmail.example.net",
+            "mode": "dns.nsupdate",
+            "nsupdate_server": "ns1.example.net",
+            "nsupdate_keyname": "webmail.",
+            "nsupdate_keyfile": "/etc/nsupdate.key",
+            "dns_updatedomain": "webmail.example.net"
+        },
+        {
+            "path": "/etc/postfix/ssl/mail.key",
+            "user": "root",
+            "group": "root",
+            "perm": "400",
+            "format": "key",
+            "action": "/etc/init.d/postfix reload"
+        },
+        {
+            "path": "/etc/postfix/ssl/mail.crt",
+            "user": "root",
+            "group": "root",
+            "perm": "400",
+            "format": "crt,ca",
+            "action": "/etc/init.d/postfix reload"
+        }
+    ]
+}

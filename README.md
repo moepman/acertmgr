@@ -1,12 +1,12 @@
 ACERTMGR
 ========
 
-This is an automated certificate manager using ACME/letsencrypt.
+This is an automated certificate manager using ACME/letsencrypt with minimal dependencies.
 
 Running ACERTMGR
 ----------------
 
-The main file acertmgr.py is intended to be run regularly (e.g. as daily cron job) as root.
+The main file acertmgr.py is intended to be run regularly (e.g. as daily cron job / systemd timer) as root or user with enough privileges.
 
 Requirements
 ------------
@@ -34,9 +34,9 @@ You should decide which challenge mode you want to use with acertmgr:
   * dns.nsupdate: Updates the TXT record using RFC2136 (with dnspython)
 
 You can optionally provide the private key files to be used with the ACME protocol (if you do not they will be automatically created):
-  * The account private key is expected at `/etc/acertmgr/account.key` (used to register an account with the authorities server)
-  * The domain private key is expected at `/etc/acertmgr/server.key` (Note: only one domain key is required for all domains used in the same instance of acertmgr)
-  * If you are missing these keys, they will be created for you or you can create them using `openssl genrsa 4096 > /etc/acertmgr/account.key` and `openssl genrsa 4096 > /etc/acertmgr/server.key` respectively
+  * The account private key is (by default) expected at `/etc/acertmgr/account.key` (used to register an account with the authorities server)
+  * The domain private keys are (by default) expected at `/etc/acertmgr/{certificate-hash}.key`
+  * If you are missing these keys, they will be created for you or you can create them using e.g. `openssl genrsa 4096 > /etc/acertmgr/account.key`
   * Do not forget to set proper permissions of the keys using `chmod 0400 /etc/acertmgr/*.key`
 
 Finally, you need to setup the configuration files, as shown in the next section.
@@ -49,179 +49,52 @@ Configuration
 
 Unless specified with a commandline parameter (see acertmgr.py --help) the optional global configuration is read from '/etc/acertmgr/acertmgr.conf'.
 Domains for which certificates should be obtained/renewed should be configured in `/etc/acertmgr/*.conf` (the global configuration is always excluded if it is in the same directory).
+By default the directory containing the working data (work_dir) is located at `/etc/acertmgr/`.
 
-All configuration files can use yaml (requires PyYAML) or json syntax.
+All configuration files can use yaml (requires PyYAML) or json syntax. *Examples can be found in the docs/ directory* (Note: The JSON examples may be incomplete due to inability to express comments in JSON)
 
-  * Example optional global configuration file (YAML syntax):
+4 configuration contexts are known: *domainconfig (d) > globalconfig (g) > commandline (c) > built-in defaults*
+The following the directives are currently known (subject to change, recommended context for usage written bold):
 
-```yaml
----
+| Directive               | Context           | Description                                                                                                                                  | Built-in Default                     |
+| ---                     | ---               | ---                                                                                                                                          | ---                                  |
+| < domains >:            | **d**             | (domainconfig header) Domains to use in the cert request, will be MD5 hashed as cert_id                                                      |                                      |
+| api                     | d,**g**           | Determines the API version used                                                                                                              | v2                                   |
+| authority               | d,**g**           | URL to the certificate authorities API                                                                                                       | https://acme-v02.api.letsencrypt.org |
+| authority_tos_agreement | d,**g**,**c**     | Indicates agreement to the ToS of the certificate authority                                                                                  |                                      |
+| authority_contact_email | d,**g**           | (v2 API only) Contact e-mail to be registered with your account key                                                                          |                                      |
+| account_key             | d,**g**           | Path to the account key                                                                                                                      | {work_dir}/account.key               |
+| ttl_days                | d,**g**           | Renew certificate if it has less than this value validity left                                                                               | 30                                   |
+| cert_dir                | d,**g**           | Directory containing all certificate related data (crt,key,csr)                                                                              | {work_dir}                           |
+| csr_static              | **d**,g           | Whether to re-use a static CSR or generate a new dynamic CSR                                                                                 | false                                |
+| csr_file                | **d**,g           | Path to store (and load) the certificate CSR file                                                                                            | {cert_dir}/{cert_id}.csr             |
+| ca_file                 | **d**,g           | Path to store (and load) the certificate authority file                                                                                      | {cert_dir}/{cert_id}.ca              |
+| cert_file               | **d**             | Path to store (and load) the certificate file                                                                                                | {cert_dir}/{cert_id}.crt             |
+| key_file                | **d**,g           | Path to store (and load) the private key file                                                                                                | {cert_dir}/{cert_id}.key             |
+| key_length              | d,**g**           | Key-length for newly generated private keys                                                                                                  | 4096                                 |
+| mode                    | **d**,g           | Mode of challenge handling used                                                                                                              | standalone                           |
+| webdir                  | **d**,g           | [webdir] Put acme challenges into this path                                                                                                  |                                      |
+| port                    | **d**,g           | [standalone] Serve the challenge using a HTTP server on this port                                                                            | 80                                   |
+| dns_ttl                 | **d**,g           | [dns.*] Write TXT records with this TTL (also determines the update wait time at twice this value                                            | 60                                   |
+| dns_updatedomain        | **d**,g           | [dns.*] Write the TXT records to this domain (you have to create the necessary CNAME on the real challenge domain manually)                  |                                      |
+| nsupdate_server         | **d**,g           | [dns.nsupdate] DNS Server to delegate the update to                                                                                          | <determine from zone SOA>            |
+| nsupdate_keyfile        | **d**,g           | [dns.nsupdate] Bind-formatted TSIG key file to use for updates (may be used instead of nsupdate_key*)                                        |                                      |
+| nsupdate_keyname        | **d**,g           | [dns.nsupdate] TSIG key name to use for updates                                                                                              |                                      |
+| nsupdate_keyvalue       | **d**,g           | [dns.nsupdate] TSIG key value to use for updates                                                                                             |                                      |
+| nsupdate_keyalgorithm   | **d**,g           | [dns.nsupdate] TSIG key algorithm to use for updates                                                                                         |                                      |
+| defaults:               | **g**             | Deployment action defaults                                                                                                                   |                                      |
+| path                    | **d**             | (deployment) deploy certificate data to the given file                                                                                       |                                      |
+| user                    | **d**,g(defaults) | (deployment) change the user of the file deployed at path to this value                                                                      |                                      |
+| group                   | **d**,g(defaults) | (deployment) change the group of the file deployed at path to this value                                                                     |                                      |
+| perm                    | **d**,g(defaults) | (deployment) change the permissions of the file deployed at path to this value                                                               |                                      |
+| format                  | **d**,g(defaults) | (deployment) deploy one or more of the following data to the file at path: key,crt,ca                                                        |                                      |
+| action                  | **d**,g(defaults) | (deployment) run the following action after deployment is finished. This command will be run in a shell and therefore supports shell syntax. |                                      |
 
-# Optional: Authority API endpoint to use
-# Legacy ACME v1 API with options:
-#api: v1
-#authority: "https://acme-v01.api.letsencrypt.org"
-#authority: "https://acme-staging.api.letsencrypt.org"
-#authority_tos_agreement: "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
-
-# Current (default) ACME v2 API with options:
-#api: v2
-#authority: "https://acme-v02.api.letsencrypt.org"
-#authority: "https://acme-staging-v02.api.letsencrypt.org"
-authority_tos_agreement: "true" # Indicates you agree to the ToS stated by the API provider
-#authority_contact_email: "foo@b.ar" # For single addresses
-#authority_contact_email:            # For multiple addresses
-#  - "foo@b.ar"
-#  - "c4f3@b.ar"
-
-# Optional: account_key location. This defaults to "/etc/acertmgr/account.key"
-#account_key: "/etc/acertmgr/account.key"
-
-# Optional: global server_key location. Otherwise separate key per server
-#server_key: "/etc/acertmgr/server.key"
-
-# Optional: global challenge handling mode with parameters
-#mode: webdir
-#webdir: /var/www/acme-challenge/
-#mode: standalone
-#port: 13135
-```
-
-  * Example domain configuration file (YAML syntax):
-
-```yaml
----
-
-# this will save the the key and certificate chain seperately
-mail.example.com:
-- path: /etc/postfix/ssl/mail.key
-  user: root
-  group: root
-  perm: '400'
-  format: key
-  action: '/etc/init.d/postfix reload'
-- path: /etc/postfix/ssl/mail.crt
-  user: root
-  group: root
-  perm: '400'
-  format: crt,ca
-  action: '/etc/init.d/postfix reload'
-
-# this will combine the key and certificate chain into a single file
-jabber.example.com:
-- path: /etc/ejabberd/server.pem
-  user: jabber
-  group: jabber
-  perm: '400'
-  format: key,crt,ca
-  action: '/etc/init.d/ejabberd restart'
-
-# this will create a certificate with subject alternative names
-www.example.com example.com:
-- path: /var/www/ssl/cert.pem
-  user: apache
-  group: apache
-  perm: '400'
-  action: '/etc/init.d/apache2 reload'
-  format: crt,ca
-- path: /var/www/ssl/key.pem
-  user: apache
-  group: apache
-  perm: '400'
-  action: '/etc/init.d/apache2 reload'
-  format: key
-
-# this will create a certificate with subject alternative names
-# using a different challenge handler for one domain
-# wildcards are possible with api v2 and dns challenge modes only!
-mail.example.com smtp.example.com webmail.example.net *.intra.example.com:
-- mode: dns.nsupdate
-  nsupdate_server: ns1.example.com
-  nsupdate_keyname: mail
-  nsupdate_keyvalue: Test1234512359==
-  nsupdate_keyalgorithm: HMAC-MD5.SIG-ALG.REG.INT
-- domain: webmail.example.net
-  mode: dns.nsupdate
-  nsupdate_server: ns1.example.net
-  nsupdate_keyname: webmail.
-  nsupdate_keyfile: /etc/nsupdate.key
-  dns_updatedomain: webmail.example.net
-- path: /etc/postfix/ssl/mail.key
-  user: root
-  group: root
-  perm: '400'
-  format: key
-  action: '/etc/init.d/postfix reload'
-- path: /etc/postfix/ssl/mail.crt
-  user: root
-  group: root
-  perm: '400'
-  format: crt,ca
-  action: '/etc/init.d/postfix reload'
-```
-
-  * Example optional global configuration file (JSON syntax):
-
-```json
-{
-"mode": "standalone",
-"port": "80",
-
-"account_key": "/etc/acertmgr/acc.key",
-"server_key": "/etc/acertmgr/serv.key",
-
-"webdir": "/var/www/acme-challenge/",
-"authority": "https://acme-v01.api.letsencrypt.org",
-}
-```
-
-  * Example domain configuration file (JSON syntax):
-
-```json
-{
-"mail.example.com": [
-{ "path": "/etc/postfix/ssl/mail.key",
-  "user": "root",
-  "group": "root",
-  "perm": "400",
-  "format": "key",
-  "action": "/etc/init.d/postfix reload" },
-{ "path": "/etc/postfix/ssl/mail.crt",
-  "user": "root",
-  "group": "root",
-  "perm": "400",
-  "format": "crt,ca",
-  "action": "/etc/init.d/postfix reload" }
-],
-"jabber.example.com": [
-{ "path": "/etc/ejabberd/server.pem",
-  "user": "jabber",
-  "group": "jabber",
-  "perm": "400",
-  "format": "key,crt,ca",
-  "action": "/etc/init.d/ejabberd restart" }
-],
-"www.example.com example.com": [
-{ "path": "/var/www/ssl/cert.pem",
-  "user": "apache",
-  "group": "apache",
-  "perm": "400",
-  "action": "/etc/init.d/apache2 reload",
-  "format": "crt,ca" },
-{ "path": "/var/www/ssl/key.pem",
-  "user": "apache",
-  "group": "apache",
-  "perm": "400",
-  "action": "/etc/init.d/apache2 reload",
-  "format": "key" }
-]
-}
-```
 
 Security
 --------
 
 Please keep the following in mind when using this software:
 
-  * DO read the source code, since it has to be run as root
+  * DO read the source code, since it (usually) will be run as root
   * Make sure that your configuration files are NOT writable by other users - arbitrary commands can be executed after updating certificates

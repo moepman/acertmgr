@@ -44,6 +44,8 @@ www.example.com example.com:
 # wildcards are possible with api v2 and dns challenge modes only!
 mail.example.com smtp.example.com webmail.example.net *.intra.example.com:
 - mode: dns.nsupdate
+  dns_ttl: 120
+  csr_static: true
   nsupdate_server: ns1.example.com
   nsupdate_keyname: mail
   nsupdate_keyvalue: Test1234512359==
