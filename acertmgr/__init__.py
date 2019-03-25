@@ -151,15 +151,21 @@ def main():
     # check certificate validity and obtain/renew certificates if needed
     for config in configs:
         cert_file = config['cert_file']
+
         if not os.path.isfile(cert_file) or not tools.is_cert_valid(cert_file, config['ttl_days']):
             cert_get(config)
+
         for cfg in config['actions']:
             if not tools.target_is_current(cfg['path'], cert_file):
-                print("Updating '{}' due to newer certificate".format(cfg['path']))
+                print("Updating '{}' due to newer version".format(cfg['path']))
                 actions.add(cert_put(cfg))
 
     # run post-update actions
     for action in actions:
         if action is not None:
-            print("Running '{}' to trigger update for changes".format(action))
-            subprocess.call(action.split())
+            try:
+                # Run actions in a shell environment (to allow shell syntax) as stated in the configuration
+                output = subprocess.check_output(action, shell=True, stderr=subprocess.STDOUT)
+                print("Executed '{}' successfully: {}".format(action, output))
+            except subprocess.CalledProcessError as e:
+                print("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output))
