@@ -151,9 +151,11 @@ def main():
     # check certificate validity and obtain/renew certificates if needed
     for config in configs:
         cert_file = config['cert_file']
-
-        if not os.path.isfile(cert_file) or not tools.is_cert_valid(cert_file, config['ttl_days']):
-            cert_get(config)
+        cert_file_exists = os.path.isfile(cert_file)
+        if cert_file_exists:
+            cert = tools.read_pem_file(cert_file)
+        if not cert_file_exists or not tools.is_cert_valid(cert, config['ttl_days']):
+                cert_get(config)
 
         for cfg in config['actions']:
             if not tools.target_is_current(cfg['path'], cert_file):
