@@ -57,7 +57,7 @@ def update_config_value(config, name, localconfig, globalconfig, default):
 
 
 # @brief load the configuration from a file
-def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
+def parse_config_entry(entry, globalconfig, runtimeconfig):
     config = dict()
 
     # Basic domain information
@@ -98,16 +98,18 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
     update_config_value(config, 'authority', localconfig, globalconfig, DEFAULT_AUTHORITY)
 
     # Certificate authority ToS agreement
-    update_config_value(config, 'authority_tos_agreement', localconfig, globalconfig, authority_tos_agreement)
+    update_config_value(config, 'authority_tos_agreement', localconfig, globalconfig,
+                        runtimeconfig['authority_tos_agreement'])
 
     # Certificate authority contact email addresses
     update_config_value(config, 'authority_contact_email', localconfig, globalconfig, None)
 
     # Account key
-    update_config_value(config, 'account_key', localconfig, globalconfig, os.path.join(work_dir, "account.key"))
+    update_config_value(config, 'account_key', localconfig, globalconfig,
+                        os.path.join(runtimeconfig['work_dir'], "account.key"))
 
     # Certificate directory
-    update_config_value(config, 'cert_dir', localconfig, globalconfig, work_dir)
+    update_config_value(config, 'cert_dir', localconfig, globalconfig, runtimeconfig['work_dir'])
 
     # TTL days
     update_config_value(config, 'ttl_days', localconfig, globalconfig, DEFAULT_TTL)
@@ -181,6 +183,7 @@ def parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement):
 
 # @brief load the configuration from a file
 def load():
+    runtimeconfig = dict()
     parser = argparse.ArgumentParser(description="acertmgr - Automated Certificate Manager using ACME/Let's Encrypt")
     parser.add_argument("-c", "--config-file", nargs="?",
                         help="global configuration file (default='{}')".format(DEFAULT_CONF_FILE))
@@ -210,25 +213,29 @@ def load():
     else:
         domain_config_dir = DEFAULT_CONF_DIR
 
-    # Determine work directory...
+    # Runtime configuration: Get from command-line options
+    # - work_dir
     if args.work_dir:
-        work_dir = args.work_dir
+        runtimeconfig['work_dir'] = args.work_dir
     elif os.path.isdir(LEGACY_WORK_DIR) and domain_config_dir == LEGACY_CONF_DIR:
-        work_dir = LEGACY_WORK_DIR
+        print("WARNING: Legacy work dir '{}' used. Move to config-dir for 1.0".format(LEGACY_WORK_DIR))
+        runtimeconfig['work_dir'] = LEGACY_WORK_DIR
     else:
-        # .. or use the domain configuration directory otherwise
-        work_dir = domain_config_dir
+        runtimeconfig['work_dir'] = domain_config_dir
+    #  create work_dir if it does not exist yet
+    if not os.path.isdir(runtimeconfig['work_dir']):
+        os.mkdir(runtimeconfig['work_dir'], int("0700", 8))
 
-    # Determine authority agreement
+    # - authority_tos_agreement
     if args.authority_tos_agreement:
-        authority_tos_agreement = args.authority_tos_agreement
+        runtimeconfig['authority_tos_agreement'] = args.authority_tos_agreement
     elif global_config_file == LEGACY_CONF_FILE:
-        # Old global config file assumes ToS are agreed
-        authority_tos_agreement = LEGACY_AUTHORITY_TOS_AGREEMENT
+        # Legacy global config file assumes ToS are agreed
+        runtimeconfig['authority_tos_agreement'] = LEGACY_AUTHORITY_TOS_AGREEMENT
     else:
-        authority_tos_agreement = None
+        runtimeconfig['authority_tos_agreement'] = None
 
-    # load global configuration
+    # Global configuration: Load from file
     globalconfig = dict()
     if os.path.isfile(global_config_file):
         with io.open(global_config_file) as config_fd:
@@ -244,12 +251,8 @@ def load():
         if 'authority' not in globalconfig:
             globalconfig['authority'] = LEGACY_AUTHORITY
 
-    # create work directory if it does not exist
-    if not os.path.isdir(work_dir):
-        os.mkdir(work_dir, int("0700", 8))
-
-    # load domain configuration
-    config = list()
+    # Domain configuration(s): Load from file(s)
+    domainconfigs = list()
     if os.path.isdir(domain_config_dir):
         for domain_config_file in os.listdir(domain_config_dir):
             domain_config_file = os.path.join(domain_config_dir, domain_config_file)
@@ -259,11 +262,11 @@ def load():
                 with io.open(domain_config_file) as config_fd:
                     try:
                         for entry in json.load(config_fd).items():
-                            config.append(parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement))
+                            domainconfigs.append(parse_config_entry(entry, globalconfig, runtimeconfig))
                     except ValueError:
                         import yaml
                         config_fd.seek(0)
                         for entry in yaml.safe_load(config_fd).items():
-                            config.append(parse_config_entry(entry, globalconfig, work_dir, authority_tos_agreement))
+                            domainconfigs.append(parse_config_entry(entry, globalconfig, runtimeconfig))
 
-    return config
+    return runtimeconfig, domainconfigs

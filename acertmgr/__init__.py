@@ -143,13 +143,13 @@ def cert_put(settings):
 
 def main():
     # load config
-    configs = configuration.load()
+    runtimeconfig, domainconfigs = configuration.load()
 
     # post-update actions (run only once)
     actions = set()
 
     # check certificate validity and obtain/renew certificates if needed
-    for config in configs:
+    for config in domainconfigs:
         cert_file = config['cert_file']
         cert_file_exists = os.path.isfile(cert_file)
         if cert_file_exists:
