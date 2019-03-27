@@ -123,6 +123,9 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     update_config_value(config, 'ttl_days', localconfig, globalconfig, DEFAULT_TTL)
     config['ttl_days'] = int(config['ttl_days'])
 
+    # Revoke old certificate with reason superseded after renewal
+    update_config_value(config, 'cert_revoke_superseded', localconfig, globalconfig, "false")
+
     # Use a static cert request
     update_config_value(config, 'csr_static', localconfig, globalconfig, "false")
 

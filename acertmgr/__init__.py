@@ -85,6 +85,7 @@ def cert_get(settings):
 
     #  if resulting certificate is valid: store in final location
     if tools.is_cert_valid(crt, settings['ttl_days']):
+        print("Certificate '{}' renewed and valid until {}".format(crt, crt.not_valid_after))
         tools.write_pem_file(crt, settings['cert_file'], stat.S_IREAD)
         if "static_ca" in settings and not settings['static_ca'] and ca is not None:
             tools.write_pem_file(ca, settings['ca_file'])
@@ -163,6 +164,7 @@ def main():
         # Mode: issue certificates (implicit)
         # post-update actions (run only once)
         actions = set()
+        superseded = set()
         # check certificate validity and obtain/renew certificates if needed
         for config in domainconfigs:
             cert = None
@@ -172,6 +174,8 @@ def main():
                     ('force_renew' in runtimeconfig and re.search(r'(^| ){}( |$)'.format(
                         re.escape(runtimeconfig['force_renew'])), config['domains'])):
                 cert_get(config)
+                if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
+                    superseded.add(cert)
 
         # deploy new certificates after all are renewed
         for config in domainconfigs:
@@ -181,6 +185,7 @@ def main():
                     actions.add(cert_put(cfg))
 
         # run post-update actions
+        all_actions_success = True
         for action in actions:
             if action is not None:
                 try:
@@ -189,3 +194,12 @@ def main():
                     print("Executed '{}' successfully: {}".format(action, output))
                 except subprocess.CalledProcessError as e:
                     print("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output))
+                    all_actions_success = False
+
+        # revoke old certificates as superseded
+        if all_actions_success:
+            for superseded_cert in superseded:
+                print("Revoking previous certificate '{}' valid until {} as superseded".format(
+                    superseded_cert,
+                    superseded_cert.not_valid_after))
+                cert_revoke(superseded_cert, domainconfigs, reason=4)  # reason=4 is superseded
