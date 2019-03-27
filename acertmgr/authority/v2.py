@@ -42,7 +42,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                 "newOrder": "{}/acme/new-order".format(self.ca),
             }
             print("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory))
-        self._request_endpoint('newNonce')  # cache the first nonce
+        self.nonce = None
 
         # @todo: Add support for key-types other than RSA
         numbers = key.public_key().public_numbers()
@@ -69,11 +69,8 @@ class ACMEAuthority(AbstractACMEAuthority):
         if 'Replay-Nonce' in resp.headers:
             self.nonce = resp.headers['Replay-Nonce']
 
-        if raw_result:
-            return resp.getcode(), resp.read(), resp.headers
-
         body = resp.read()
-        if len(body) > 0:
+        if not raw_result and len(body) > 0:
             try:
                 body = json.loads(body.decode('utf-8'))
             except json.JSONDecodeError as e:
@@ -110,9 +107,6 @@ class ACMEAuthority(AbstractACMEAuthority):
             return self._request_url(url, data, raw_result)
         except IOError as e:
             return getattr(e, "code", None), getattr(e, "read", e.__str__)(), {}
-        finally:
-            # Dispose of nonce after it was used
-            self.nonce = None
 
     # @brief send a request to authority
     def _request_endpoint(self, request, data=None, raw_result=False):
