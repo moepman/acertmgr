@@ -15,7 +15,7 @@ from acertmgr.modes.abstract import AbstractChallengeHandler
 class ChallengeHandler(AbstractChallengeHandler):
     def __init__(self, config):
         AbstractChallengeHandler.__init__(self, config)
-        self._verify_challenge = True
+        self._verify_challenge = str(config.get("webdir_verify", "true")).lower() == "true"
         self.challenge_directory = config.get("webdir", "/var/www/acme-challenge/")
         if not os.path.isdir(self.challenge_directory):
             raise FileNotFoundError("Challenge directory (%s) does not exist!" % self.challenge_directory)
