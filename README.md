@@ -27,9 +27,7 @@ Setup
 
 You should decide which challenge mode you want to use with acertmgr:
   * webdir: In this mode, responses to challenges are put into a directory, to be served by an existing webserver
-  * standalone: In this mode, challenges are completed by acertmgr directly.
-    This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port
-  * webdir/standalone: Make sure that the `webdir` directory exists in both cases (Note: the standalone webserver does not yet serve the files in situation)
+  * standalone: In this mode, challenges are completed by acertmgr directly. This starts a webserver to solve the challenges, which can be used standalone or together with an existing webserver that forwards request to a specified local port/address.
   * dns.*: This mode puts the challenge into a TXT record for the domain (usually _acme-challenge.<domain>) where it will be parsed from by the authority
   * dns.* (Alias mode): Can be used similar to the above but allows redirection of _acme-challenge.<domain> to any other (updatable domain) defined in dns_updatedomain via CNAME (e.g. _acme-challenge.example.net IN CNAME bla.foo.bar with dns_updatedomain="bla.foo.bar" in domainconfig)
   * dns.nsupdate: Updates the TXT record using RFC2136
@@ -76,7 +74,8 @@ By default the directory (work_dir) containing the working data (csr,certificate
 | cert_file               | **d**             | Path to store (and load) the certificate file                                                                                                | {cert_dir}/{cert_id}.crt             |
 | key_file                | **d**,g           | Path to store (and load) the private key file                                                                                                | {cert_dir}/{cert_id}.key             |
 | mode                    | **d**,g           | Mode of challenge handling used                                                                                                              | standalone                           |
-| webdir                  | **d**,g           | [webdir,standalone] Put acme challenges into this path                                                                                       | /var/www/acme-challenge/             |
+| webdir                  | **d**,g           | [webdir] Put acme challenges into this path                                                                                                  | /var/www/acme-challenge/             |
+| bind_address            | **d**,g           | [standalone] Serve the challenge using a HTTP server on given IP                                                                             |                                      |
 | port                    | **d**,g           | [standalone] Serve the challenge using a HTTP server on this port                                                                            | 80                                   |
 | dns_ttl                 | **d**,g           | [dns.*] Write TXT records with this TTL (also determines the update wait time at twice this value                                            | 60                                   |
 | dns_updatedomain        | **d**,g           | [dns.*] Write the TXT records to this domain (you have to create the necessary CNAME on the real challenge domain manually)                  |                                      |

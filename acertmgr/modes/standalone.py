@@ -7,77 +7,77 @@
 # available under the ISC license, see LICENSE
 
 try:
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+    from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 except ImportError:
-    from http.server import SimpleHTTPRequestHandler
+    from http.server import HTTPServer, BaseHTTPRequestHandler
 
-try:
-    from SocketServer import TCPServer as HTTPServer
-except ImportError:
-    from http.server import HTTPServer
-
-import os
+import datetime
+import re
+import socket
 import threading
 
-from acertmgr.modes.webdir import ChallengeHandler as WebChallengeHandler
-
-
-# @brief custom request handler for ACME challenges
-# @note current working directory is temporarily changed by the script before
-#       the webserver starts, which allows using SimpleHTTPRequestHandler
-class ACMERequestHandler(SimpleHTTPRequestHandler):
-    # @brief remove directories from GET URL
-    # @details the current working directory contains the challenge files,
-    #          there is no need for creating subdirectories for the path
-    #          that ACME expects.
-    #          Additionally, this allows redirecting the ACME path to this
-    #          webserver without having to know which subdirectory is
-    #          redirected, which simplifies integration with existing
-    #          webservers.
-    def translate_path(self, path):
-        spath = path.split('/')
-        if spath[0] != '':
-            raise ValueError("spath should be '' is {}".format(spath[0]))
-        spath = spath[1:]
-        if spath[0] == '.well-known':
-            spath = spath[1:]
-        if spath[0] == 'acme-challenge':
-            spath = spath[1:]
-            if len(spath) != 1:
-                raise ValueError("spath length {} != 1".format(len(spath)))
-        spath.insert(0, '')
-        path = '/'.join(spath)
-        return SimpleHTTPRequestHandler.translate_path(self, path)
-
-
-# @brief start the standalone webserver
-# @param server the HTTPServer object
-# @note this function is used to be passed to threading.Thread
-def start_standalone(server):
-    server.serve_forever()
-
+from acertmgr.modes.abstract import AbstractChallengeHandler
 
 HTTPServer.allow_reuse_address = True
 
 
-class ChallengeHandler(WebChallengeHandler):
+class HTTPServer6(HTTPServer):
+    address_family = socket.AF_INET6
+
+
+class ChallengeHandler(AbstractChallengeHandler):
     def __init__(self, config):
-        WebChallengeHandler.__init__(self, config)
-        self._verify_challenge = False
-        self.current_directory = os.getcwd()
-        if "port" in config:
-            port = int(config["port"])
-        else:
-            port = 80
+        AbstractChallengeHandler.__init__(self, config)
+        bind_address = config.get("bind_address", "")
+        port = int(config.get("port", 80))
+
+        self.challenges = {}  # Initialize the challenge data dict
+        _self = self
+
+        # Custom HTTP request handler
+        class _HTTPRequestHandler(BaseHTTPRequestHandler):
+            def log_message(self, fmt, *args):
+                print("Request from '%s': %s" % (self.address_string(), fmt % args))
+
+            def do_GET(self):
+                # Match token on http://<domain>/.well-known/acme-challenge/<token>
+                match = re.match(r'.*/(?P<token>[^/]*)$', self.path)
+                if match and match.group('token') in _self.challenges:
+                    value = _self.challenges[match.group('token')].encode('utf-8')
+                    rcode = 200
+                else:
+                    value = "404 - NOT FOUND".encode('utf-8')
+                    rcode = 404
+                self.send_response(rcode)
+                self.send_header('Content-type', 'text/plain')
+                self.send_header('Content-length', len(value))
+                self.end_headers()
+                self.wfile.write(value)
+
         self.server_thread = None
-        self.server = HTTPServer(("", port), ACMERequestHandler)
+        try:
+            self.server = HTTPServer6((bind_address, port), _HTTPRequestHandler)
+        except socket.gaierror:
+            self.server = HTTPServer((bind_address, port), _HTTPRequestHandler)
+
+    @staticmethod
+    def get_challenge_type():
+        return "http-01"
+
+    def create_challenge(self, domain, thumbprint, token):
+        self.challenges[token] = "{0}.{1}".format(token, thumbprint)
+        return datetime.datetime.now()
+
+    def destroy_challenge(self, domain, thumbprint, token):
+        del self.challenges[token]
 
     def start_challenge(self):
-        self.server_thread = threading.Thread(target=start_standalone, args=(self.server,))
-        os.chdir(self.challenge_directory)
+        def _():
+            self.server.serve_forever()
+
+        self.server_thread = threading.Thread(target=_)
         self.server_thread.start()
 
     def stop_challenge(self):
         self.server.shutdown()
         self.server_thread.join()
-        os.chdir(self.current_directory)
