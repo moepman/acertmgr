@@ -12,6 +12,12 @@ import hashlib
 import io
 import json
 import os
+import sys
+
+try:
+    import idna
+except ImportError:
+    pass
 
 # Backward compatiblity for older versions/installations of acertmgr
 LEGACY_WORK_DIR = "/etc/acme"
@@ -56,6 +62,25 @@ def update_config_value(config, name, localconfig, globalconfig, default):
         config[name] = globalconfig.get(name, default)
 
 
+# @brief convert domain list to idna representation (if applicable
+def idna_convert(domainlist):
+    if 'idna' in sys.modules and any(ord(c) >= 128 for c in ''.join(domainlist)):
+        domaintranslation = {}
+        for domain in domainlist:
+            if any(ord(c) >= 128 for c in domain):
+                # Translate IDNA domain name from a unicode domain (handle wildcards separately)
+                if domain.startswith('*.'):
+                    idna_domain = "*.{}".format(idna.encode(domain[2:]).decode('utf-8'))
+                else:
+                    idna_domain = idna.encode(domain).decode('utf-8')
+                domaintranslation[idna_domain] = domain
+        return domaintranslation
+    else:
+        if 'idna' not in sys.modules:
+            print("Unicode domain found but IDNA names could not be translated due to missing idna module")
+        return {}
+
+
 # @brief load the configuration from a file
 def parse_config_entry(entry, globalconfig, runtimeconfig):
     config = dict()
@@ -65,28 +90,11 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     config['domainlist'] = config['domains'].split(' ')
     config['id'] = hashlib.md5(config['domains'].encode('utf-8')).hexdigest()
 
-    # Append IDNA domains to the domainlist and domains
-    if any(ord(c) >= 128 for c in config['domains']):
-        try:
-            import idna
-            domainlist = []
-            config['domaintranslation'] = {}
-            for domain in config['domainlist']:
-                if any(ord(c) >= 128 for c in domain):
-                    # Translate IDNA domain name from a unicode domain (handle wildcards separately)
-                    if domain.startswith('*.'):
-                        idna_domain = "*.{}".format(idna.encode(domain[2:]).decode('utf-8'))
-                    else:
-                        idna_domain = idna.encode(domain).decode('utf-8')
-                    domainlist.append(idna_domain)
-                    config['domaintranslation'][idna_domain] = domain
-                else:
-                    domainlist.append(domain)
-            # Refresh the domainlist and domains config value
-            config['domainlist'] = domainlist
-            config['domains'] = ' '.join(domainlist)
-        except ImportError:
-            print("Unicode domain found but IDNA names could not be translated due to missing idna module")
+    # Convert unicode to IDNA domains
+    config['domaintranslation'] = idna_convert(config['domainlist'])
+    if len(config['domaintranslation']) > 0:
+        config['domainlist'] = config['domaintranslation'].values()
+        config['domains'] = ' '.join(config['domainlist'])
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
