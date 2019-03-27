@@ -201,6 +201,8 @@ def load():
                         help="persistent work data directory (default=config_dir)")
     parser.add_argument("--authority-tos-agreement", "--tos-agreement", "--tos", nargs="?",
                         help="Agree to the authorities Terms of Service (value required depends on authority)")
+    parser.add_argument("--force-renew", "--renew-now", nargs="?",
+                        help="Renew all domain configurations matching the given value immediately")
     args = parser.parse_args()
 
     # Determine global configuration file
@@ -242,6 +244,14 @@ def load():
         runtimeconfig['authority_tos_agreement'] = LEGACY_AUTHORITY_TOS_AGREEMENT
     else:
         runtimeconfig['authority_tos_agreement'] = None
+
+    # - force-rewew
+    if args.force_renew:
+        domaintranslation = idna_convert(args.force_renew.split(' '))
+        if len(domaintranslation) > 0:
+            runtimeconfig['force_renew'] = ' '.join(domaintranslation.values())
+        else:
+            runtimeconfig['force_renew'] = args.force_renew
 
     # Global configuration: Load from file
     globalconfig = dict()

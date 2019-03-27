@@ -11,6 +11,7 @@ import importlib
 import io
 import os
 import pwd
+import re
 import stat
 import subprocess
 
@@ -150,15 +151,16 @@ def main():
 
     # check certificate validity and obtain/renew certificates if needed
     for config in domainconfigs:
-        cert_file = config['cert_file']
-        cert_file_exists = os.path.isfile(cert_file)
-        if cert_file_exists:
-            cert = tools.read_pem_file(cert_file)
-        if not cert_file_exists or not tools.is_cert_valid(cert, config['ttl_days']):
-                cert_get(config)
+        cert = None
+        if os.path.isfile(config['cert_file']):
+            cert = tools.read_pem_file(config['cert_file'])
+        if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or \
+                ('force_renew' in runtimeconfig and re.search(r'(^| ){}( |$)'.format(
+                    re.escape(runtimeconfig['force_renew'])), config['domains'])):
+            cert_get(config)
 
         for cfg in config['actions']:
-            if not tools.target_is_current(cfg['path'], cert_file):
+            if not tools.target_is_current(cfg['path'], config['cert_file']):
                 print("Updating '{}' due to newer version".format(cfg['path']))
                 actions.add(cert_put(cfg))
 
