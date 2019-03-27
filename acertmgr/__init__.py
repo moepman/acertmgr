@@ -173,6 +173,8 @@ def main():
                         re.escape(runtimeconfig['force_renew'])), config['domains'])):
                 cert_get(config)
 
+        # deploy new certificates after all are renewed
+        for config in domainconfigs:
             for cfg in config['actions']:
                 if not tools.target_is_current(cfg['path'], config['cert_file']):
                     print("Updating '{}' due to newer version".format(cfg['path']))
