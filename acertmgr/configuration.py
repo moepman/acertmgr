@@ -203,6 +203,10 @@ def load():
                         help="Agree to the authorities Terms of Service (value required depends on authority)")
     parser.add_argument("--force-renew", "--renew-now", nargs="?",
                         help="Renew all domain configurations matching the given value immediately")
+    parser.add_argument("--revoke", nargs="?",
+                        help="Revoke a certificate file issued with the currently configured account key.")
+    parser.add_argument("--revoke-reason", nargs="?", type=int,
+                        help="Provide a revoke reason, see https://tools.ietf.org/html/rfc5280#section-5.3.1")
     args = parser.parse_args()
 
     # Determine global configuration file
@@ -252,6 +256,12 @@ def load():
             runtimeconfig['force_renew'] = ' '.join(domaintranslation.values())
         else:
             runtimeconfig['force_renew'] = args.force_renew
+
+    # - revoke
+    if args.revoke:
+        runtimeconfig['mode'] = 'revoke'
+        runtimeconfig['revoke'] = args.revoke
+        runtimeconfig['revoke_reason'] = args.revoke_reason
 
     # Global configuration: Load from file
     globalconfig = dict()

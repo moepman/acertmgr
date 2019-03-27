@@ -16,19 +16,19 @@ class ACMEAuthority:
         self.config = config
 
     # @brief register an account over ACME
-    # @param account_key the account key to register
-    # @param CA the certificate authority to register with
-    # @return True if new account was registered, False otherwise
     def register_account(self):
         raise NotImplementedError
 
     # @brief function to fetch certificate using ACME
-    # @param account_key the account key in pyopenssl format
     # @param csr the certificate signing request in pyopenssl format
     # @param domains list of domains in the certificate, first is CN
     # @param challenge_handlers a dict containing challenge for all given domains
-    # @param CA which signing CA to use
-    # @return the certificate in pyopenssl format
-    # @note algorithm and parts of the code are from acme-tiny
+    # @return the certificate
     def get_crt_from_csr(self, csr, domains, challenge_handlers):
+        raise NotImplementedError
+
+    # @brief function to revoke a certificate using ACME
+    # @param crt certificate to revoke
+    # @param reason (int) optional certificate revoke reason (see https://tools.ietf.org/html/rfc5280#section-5.3.1)
+    def revoke_crt(self, crt, reason=None):
         raise NotImplementedError

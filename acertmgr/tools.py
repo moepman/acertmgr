@@ -150,6 +150,19 @@ def download_issuer_ca(cert):
     return x509.load_der_x509_certificate(resp.read(), default_backend())
 
 
+# @brief determine all san domains on a given certificate
+def get_cert_domains(cert):
+    if cert is None:
+        print("WARN: None-certificate has no domains. You have found a bug. Congratulations!")
+        return []
+
+    san_cert = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+    if san_cert:
+        return [d.value for d in san_cert.value]
+    else:
+        return [cert.subject.rfc4514_string()[3:], ]  # strip CN= from the result and return as 1 item list
+
+
 # @brief convert certificate to PEM format
 # @param cert certificate object in pyopenssl format
 # @return the certificate in PEM format
@@ -162,8 +175,8 @@ def convert_pem_str_to_cert(certdata):
     return x509.load_pem_x509_certificate(certdata.encode('utf8'), default_backend())
 
 
-# @brief serialize CSR to DER bytes
-def convert_csr_to_der_bytes(data):
+# @brief serialize cert/csr to DER bytes
+def convert_cert_to_der_bytes(data):
     return data.public_bytes(serialization.Encoding.DER)
 
 

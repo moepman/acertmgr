@@ -142,34 +142,48 @@ def cert_put(settings):
     return crt_action
 
 
+def cert_revoke(cert, configs, reason=None):
+    domains = set(tools.get_cert_domains(cert))
+    for config in configs:
+        if domains == set(config['domainlist']):
+            acme = create_authority(config)
+            acme.register_account()
+            acme.revoke_crt(cert, reason)
+            return
+
+
 def main():
     # load config
     runtimeconfig, domainconfigs = configuration.load()
+    if runtimeconfig.get('mode') == 'revoke':
+        # Mode: revoke certificate
+        print("Revoking {}".format(runtimeconfig['revoke']))
+        cert_revoke(tools.read_pem_file(runtimeconfig['revoke']), domainconfigs, runtimeconfig['revoke_reason'])
+    else:
+        # Mode: issue certificates (implicit)
+        # post-update actions (run only once)
+        actions = set()
+        # check certificate validity and obtain/renew certificates if needed
+        for config in domainconfigs:
+            cert = None
+            if os.path.isfile(config['cert_file']):
+                cert = tools.read_pem_file(config['cert_file'])
+            if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or \
+                    ('force_renew' in runtimeconfig and re.search(r'(^| ){}( |$)'.format(
+                        re.escape(runtimeconfig['force_renew'])), config['domains'])):
+                cert_get(config)
 
-    # post-update actions (run only once)
-    actions = set()
+            for cfg in config['actions']:
+                if not tools.target_is_current(cfg['path'], config['cert_file']):
+                    print("Updating '{}' due to newer version".format(cfg['path']))
+                    actions.add(cert_put(cfg))
 
-    # check certificate validity and obtain/renew certificates if needed
-    for config in domainconfigs:
-        cert = None
-        if os.path.isfile(config['cert_file']):
-            cert = tools.read_pem_file(config['cert_file'])
-        if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or \
-                ('force_renew' in runtimeconfig and re.search(r'(^| ){}( |$)'.format(
-                    re.escape(runtimeconfig['force_renew'])), config['domains'])):
-            cert_get(config)
-
-        for cfg in config['actions']:
-            if not tools.target_is_current(cfg['path'], config['cert_file']):
-                print("Updating '{}' due to newer version".format(cfg['path']))
-                actions.add(cert_put(cfg))
-
-    # run post-update actions
-    for action in actions:
-        if action is not None:
-            try:
-                # Run actions in a shell environment (to allow shell syntax) as stated in the configuration
-                output = subprocess.check_output(action, shell=True, stderr=subprocess.STDOUT)
-                print("Executed '{}' successfully: {}".format(action, output))
-            except subprocess.CalledProcessError as e:
-                print("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output))
+        # run post-update actions
+        for action in actions:
+            if action is not None:
+                try:
+                    # Run actions in a shell environment (to allow shell syntax) as stated in the configuration
+                    output = subprocess.check_output(action, shell=True, stderr=subprocess.STDOUT)
+                    print("Executed '{}' successfully: {}".format(action, output))
+                except subprocess.CalledProcessError as e:
+                    print("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output))

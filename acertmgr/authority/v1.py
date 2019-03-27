@@ -165,7 +165,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         print("Signing certificate...")
         code, result = self._send_signed(self.ca + "/acme/new-cert", header, {
             "resource": "new-cert",
-            "csr": tools.bytes_to_base64url(tools.convert_csr_to_der_bytes(csr)),
+            "csr": tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(csr)),
         })
         if code != 201:
             raise ValueError("Error signing certificate: {0} {1}".format(code, result))
@@ -174,3 +174,17 @@ class ACMEAuthority(AbstractACMEAuthority):
         print("Certificate signed!")
         cert = tools.convert_der_bytes_to_cert(result)
         return cert, tools.download_issuer_ca(cert)
+
+    # @brief function to revoke a certificate using ACME
+    # @param crt certificate to revoke
+    # @param reason (int) optional certificate revoke reason (see https://tools.ietf.org/html/rfc5280#section-5.3.1)
+    def revoke_crt(self, crt, reason=None):
+        header = self._prepare_header()
+        payload = {'certificate': tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(crt))}
+        if reason:
+            payload['reason'] = int(reason)
+        code, result = self._send_signed(self.ca + "/acme/revoke-cert", header, payload)
+        if code < 400:
+            print("Revocation successful")
+        else:
+            raise ValueError("Revocation failed: {}".format(result))

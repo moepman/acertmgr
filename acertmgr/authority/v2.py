@@ -40,6 +40,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                 "newAccount": "{}/acme/new-acct".format(self.ca),
                 "newNonce": "{}/acme/new-nonce".format(self.ca),
                 "newOrder": "{}/acme/new-order".format(self.ca),
+                "revokeCert": "{}/acme/revoke-cert".format(self.ca),
             }
             print("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory))
         self.nonce = None
@@ -229,7 +230,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         # get the new certificate
         print("Finalizing certificate")
         code, finalize, _ = self._request_acme_url(order['finalize'], {
-            "csr": tools.bytes_to_base64url(tools.convert_csr_to_der_bytes(csr)),
+            "csr": tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(csr)),
         })
         while code < 400 and (finalize.get('status') == 'pending' or finalize.get('status') == 'processing'):
             time.sleep(5)
@@ -253,3 +254,16 @@ class ACMEAuthority(AbstractACMEAuthority):
             ca = tools.convert_pem_str_to_cert(cert_dict['ca'])
 
         return cert, ca
+
+    # @brief function to revoke a certificate using ACME
+    # @param crt certificate to revoke
+    # @param reason (int) optional certificate revoke reason (see https://tools.ietf.org/html/rfc5280#section-5.3.1)
+    def revoke_crt(self, crt, reason=None):
+        payload = {'certificate': tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(crt))}
+        if reason:
+            payload['reason'] = int(reason)
+        code, result, _ = self._request_acme_endpoint("revokeCert", payload)
+        if code < 400:
+            print("Revocation successful")
+        else:
+            raise ValueError("Revocation failed: {}".format(result))
