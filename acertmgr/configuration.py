@@ -23,6 +23,9 @@ except ImportError:
 LEGACY_WORK_DIR = "/etc/acme"
 LEGACY_CONF_FILE = os.path.join(LEGACY_WORK_DIR, "acme.conf")
 LEGACY_CONF_DIR = os.path.join(LEGACY_WORK_DIR, "domains.d")
+LEGACY_API = "v1"
+LEGACY_AUTHORITY = "https://acme-v01.api.letsencrypt.org"
+LEGACY_AUTHORITY_TOS_AGREEMENT = "true"
 
 # Configuration defaults to use if not specified otherwise
 DEFAULT_CONF_FILE = "/etc/acertmgr/acertmgr.conf"
@@ -31,9 +34,6 @@ DEFAULT_KEY_LENGTH = 4096  # bits
 DEFAULT_TTL = 30  # days
 DEFAULT_API = "v2"
 DEFAULT_AUTHORITY = "https://acme-v02.api.letsencrypt.org"
-LEGACY_API = "v1"
-LEGACY_AUTHORITY = "https://acme-v01.api.letsencrypt.org"
-LEGACY_AUTHORITY_TOS_AGREEMENT = "true"
 
 
 # @brief augment configuration with defaults
@@ -55,9 +55,9 @@ def complete_action_config(domainconfig, config):
 
 # @brief update config[name] with value from localconfig>globalconfig>default
 def update_config_value(config, name, localconfig, globalconfig, default):
-    values = [x for x in localconfig if name in x]
+    values = [x[name] for x in localconfig if name in x]
     if len(values) > 0:
-        config[name] = values[0][name]
+        config[name] = values[0]
     else:
         config[name] = globalconfig.get(name, default)
 
