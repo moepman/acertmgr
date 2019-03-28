@@ -154,18 +154,14 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     update_config_value(config, 'key_length', localconfig, globalconfig, DEFAULT_KEY_LENGTH)
     config['key_length'] = int(config['key_length'])
 
-    # SSL CA location
-    ca_files = [x for x in entry if 'ca_file' in x]
-    if len(ca_files) > 0:
-        config['static_ca'] = True
-        config['ca_file'] = ca_files[0]
-    elif 'server_ca' in globalconfig:
+    # SSL CA location / use static
+    update_config_value(config, 'ca_file', localconfig, globalconfig,
+                        globalconfig.get('server_ca', config['defaults'].get('server_ca',
+                                         os.path.join(config['cert_dir'], "{}.ca".format(config['id'])))))
+    update_config_value(config, 'ca_static', localconfig, globalconfig, "false")
+    if 'server_ca' in globalconfig or 'server_ca' in config['defaults']:
+        config['ca_static'] = "true"
         print("WARNING: Legacy configuration directive 'server_ca' used. Support will be removed in 1.0")
-        config['static_ca'] = True
-        config['ca_file'] = globalconfig['server_ca']
-    else:
-        config['static_ca'] = False
-        config['ca_file'] = os.path.join(config['cert_dir'], "{}.ca".format(config['id']))
 
     # Domain action configuration
     config['actions'] = list()

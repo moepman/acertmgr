@@ -59,7 +59,8 @@ def cert_get(settings):
     if tools.is_cert_valid(crt, settings['ttl_days']):
         print("Certificate '{}' renewed and valid until {}".format(crt, crt.not_valid_after))
         tools.write_pem_file(crt, settings['cert_file'], stat.S_IREAD)
-        if "static_ca" in settings and not settings['static_ca'] and ca is not None:
+        if (not str(settings.get('ca_static')).lower() == 'true' or not os.path.exists(settings['ca_file'])) \
+                and ca is not None:
             tools.write_pem_file(ca, settings['ca_file'])
 
 
