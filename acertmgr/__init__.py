@@ -7,7 +7,6 @@
 # available under the ISC license, see LICENSE
 
 import grp
-import importlib
 import io
 import os
 import pwd
@@ -16,35 +15,8 @@ import stat
 import subprocess
 
 from acertmgr import configuration, tools
-
-
-# @brief create a authority for the given configuration
-# @param settings the authority configuration options
-def create_authority(settings):
-    acc_file = settings['account_key']
-    if os.path.isfile(acc_file):
-        print("Reading account key from {}".format(acc_file))
-        acc_key = tools.read_pem_file(acc_file, key=True)
-    else:
-        print("Account key not found at '{0}'. Creating key.".format(acc_file))
-        acc_key = tools.new_account_key(acc_file)
-
-    authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))
-    authority_class = getattr(authority_module, "ACMEAuthority")
-    return authority_class(settings, acc_key)
-
-
-# @brief create a challenge handler for the given configuration
-# @param settings the domain's configuration options
-def create_challenge_handler(settings):
-    if "mode" in settings:
-        mode = settings["mode"]
-    else:
-        mode = "standalone"
-
-    handler_module = importlib.import_module("acertmgr.modes.{0}".format(mode))
-    handler_class = getattr(handler_module, "ChallengeHandler")
-    return handler_class(settings)
+from acertmgr.authority import authority
+from acertmgr.modes import challenge_handler
 
 
 # @brief fetch new certificate from letsencrypt
@@ -52,14 +24,14 @@ def create_challenge_handler(settings):
 def cert_get(settings):
     print("Getting certificate for '%s'." % settings['domains'])
 
-    acme = create_authority(settings['authority'])
+    acme = authority(settings['authority'])
     acme.register_account()
 
     # create challenge handlers for this certificate
     challenge_handlers = dict()
     for domain in settings['domainlist']:
         # Create the challenge handler
-        challenge_handlers[domain] = create_challenge_handler(settings['handlers'][domain])
+        challenge_handlers[domain] = challenge_handler(settings['handlers'][domain])
 
     # create ssl key
     key_file = settings['key_file']
@@ -147,7 +119,7 @@ def cert_revoke(cert, configs, reason=None):
     domains = set(tools.get_cert_domains(cert))
     for config in configs:
         if domains == set(config['domainlist']):
-            acme = create_authority(config['authority'])
+            acme = authority(config['authority'])
             acme.register_account()
             acme.revoke_crt(cert, reason)
             return
