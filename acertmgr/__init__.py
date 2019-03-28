@@ -10,7 +10,6 @@ import grp
 import io
 import os
 import pwd
-import re
 import stat
 import subprocess
 
@@ -22,7 +21,7 @@ from acertmgr.modes import challenge_handler
 # @brief fetch new certificate from letsencrypt
 # @param settings the domain's configuration options
 def cert_get(settings):
-    print("Getting certificate for '%s'." % settings['domains'])
+    print("Getting certificate for %s" % settings['domainlist'])
 
     acme = authority(settings['authority'])
     acme.register_account()
@@ -143,9 +142,9 @@ def main():
             cert = None
             if os.path.isfile(config['cert_file']):
                 cert = tools.read_pem_file(config['cert_file'])
-            if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or \
-                    ('force_renew' in runtimeconfig and re.search(r'(^| ){}( |$)'.format(
-                        re.escape(runtimeconfig['force_renew'])), config['domains'])):
+            if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or (
+                    'force_renew' in runtimeconfig and
+                    all(d in config['domainlist'] for d in runtimeconfig['force_renew'])):
                 cert_get(config)
                 if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
                     superseded.add(cert)
