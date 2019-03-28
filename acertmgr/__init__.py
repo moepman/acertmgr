@@ -52,7 +52,7 @@ def create_challenge_handler(settings):
 def cert_get(settings):
     print("Getting certificate for '%s'." % settings['domains'])
 
-    acme = create_authority(settings)
+    acme = create_authority(settings['authority'])
     acme.register_account()
 
     # create challenge handlers for this certificate
@@ -147,7 +147,7 @@ def cert_revoke(cert, configs, reason=None):
     domains = set(tools.get_cert_domains(cert))
     for config in configs:
         if domains == set(config['domainlist']):
-            acme = create_authority(config)
+            acme = create_authority(config['authority'])
             acme.register_account()
             acme.revoke_crt(cert, reason)
             return
