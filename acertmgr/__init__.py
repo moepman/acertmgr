@@ -137,27 +137,37 @@ def main():
         # post-update actions (run only once)
         actions = set()
         superseded = set()
+        exceptions = list()
         # check certificate validity and obtain/renew certificates if needed
         for config in domainconfigs:
-            cert = None
-            if os.path.isfile(config['cert_file']):
-                cert = tools.read_pem_file(config['cert_file'])
-            if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or (
-                    'force_renew' in runtimeconfig and
-                    all(d in config['domainlist'] for d in runtimeconfig['force_renew'])):
-                cert_get(config)
-                if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
-                    superseded.add(cert)
+            try:
+                cert = None
+                if os.path.isfile(config['cert_file']):
+                    cert = tools.read_pem_file(config['cert_file'])
+                if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or (
+                        'force_renew' in runtimeconfig and
+                        all(d in config['domainlist'] for d in runtimeconfig['force_renew'])):
+                    cert_get(config)
+                    if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
+                        superseded.add(cert)
+            except Exception as e:
+                print("Certificate issue/renew failed: {}".format(e))
+                exceptions.append(e)
 
         # deploy new certificates after all are renewed
+        deployment_success = True
         for config in domainconfigs:
-            for cfg in config['actions']:
-                if not tools.target_is_current(cfg['path'], config['cert_file']):
-                    print("Updating '{}' due to newer version".format(cfg['path']))
-                    actions.add(cert_put(cfg))
+            try:
+                for cfg in config['actions']:
+                    if not tools.target_is_current(cfg['path'], config['cert_file']):
+                        print("Updating '{}' due to newer version".format(cfg['path']))
+                        actions.add(cert_put(cfg))
+            except Exception as e:
+                print("Certificate deployment failed: {}".format(e))
+                exceptions.append(e)
+                deployment_success = False
 
         # run post-update actions
-        all_actions_success = True
         for action in actions:
             if action is not None:
                 try:
@@ -166,12 +176,21 @@ def main():
                     print("Executed '{}' successfully: {}".format(action, output))
                 except subprocess.CalledProcessError as e:
                     print("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output))
-                    all_actions_success = False
+                    exceptions.append(e)
+                    deployment_success = False
 
         # revoke old certificates as superseded
-        if all_actions_success:
+        if deployment_success:
             for superseded_cert in superseded:
-                print("Revoking previous certificate '{}' valid until {} as superseded".format(
-                    superseded_cert,
-                    superseded_cert.not_valid_after))
-                cert_revoke(superseded_cert, domainconfigs, reason=4)  # reason=4 is superseded
+                try:
+                    print("Revoking previous certificate '{}' valid until {} as superseded".format(
+                        superseded_cert,
+                        superseded_cert.not_valid_after))
+                    cert_revoke(superseded_cert, domainconfigs, reason=4)  # reason=4 is superseded
+                except Exception as e:
+                    print("Certificate supersede revoke failed: {}".format(e))
+                    exceptions.append(e)
+
+        # throw a RuntimeError with all exceptions caught while working if there were any
+        if len(exceptions) > 0:
+            raise RuntimeError("{} exception(s) occurred during runtime: {}".format(len(exceptions), exceptions))
