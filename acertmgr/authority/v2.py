@@ -119,6 +119,10 @@ class ACMEAuthority(AbstractACMEAuthority):
 
     # @brief register an account over ACME
     def register_account(self):
+        if self.account_id:
+            # We already have registered with this authority, just return
+            return
+
         protected = copy.deepcopy(self.account_protected)
         payload = {
             "termsOfServiceAgreed": self.tos_agreed,

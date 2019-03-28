@@ -22,6 +22,7 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param key Account key data
     def __init__(self, config, key):
         AbstractACMEAuthority.__init__(self, config, key)
+        self.registered_account = False
         self.ca = config['authority']
         self.agreement = config['authority_tos_agreement']
 
@@ -64,6 +65,10 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @brief register an account over ACME
     # @return True if new account was registered, False otherwise
     def register_account(self):
+        if self.registered_account:
+            # We already have registered with this authority, just return
+            return
+
         header = self._prepare_header()
         code, result = self._send_signed(self.ca + "/acme/new-reg", header, {
             "resource": "new-reg",
@@ -71,9 +76,11 @@ class ACMEAuthority(AbstractACMEAuthority):
         })
         if code == 201:
             print("Registered!")
+            self.registered_account = True
             return True
         elif code == 409:
             print("Already registered!")
+            self.registered_account = True
             return False
         else:
             raise ValueError("Error registering: {0} {1}".format(code, result))
