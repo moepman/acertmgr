@@ -53,8 +53,9 @@ def is_cert_valid(cert, ttl_days):
 # @brief create a certificate signing request
 # @param names list of domain names the certificate should be valid for
 # @param key the key to use with the certificate in pyopenssl format
+# @param must_staple whether or not the certificate should include the OCSP must-staple flag
 # @return the CSR in pyopenssl format
-def new_cert_request(names, key):
+def new_cert_request(names, key, must_staple=False):
     # TODO: There has to be a better way to ensure correct text type (why typecheck, cryptography?)
     primary_name = x509.Name([x509.NameAttribute(
         NameOID.COMMON_NAME,
@@ -66,6 +67,11 @@ def new_cert_request(names, key):
     req = x509.CertificateSigningRequestBuilder()
     req = req.subject_name(primary_name)
     req = req.add_extension(all_names, critical=False)
+    if must_staple:
+        if getattr(x509, 'TLSFeature', None):
+            req = req.add_extension(x509.TLSFeature(features=[x509.TLSFeatureType.status_request]), critical=False)
+        else:
+            print('OCSP must-staple ignored as current version of cryptography does not support the flag.')
     req = req.sign(key, hashes.SHA256(), default_backend())
     return req
 

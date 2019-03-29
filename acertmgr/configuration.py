@@ -131,6 +131,9 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Revoke old certificate with reason superseded after renewal
     update_config_value(config, 'cert_revoke_superseded', localconfig, globalconfig, "false")
 
+    # Whether to include request for OCSP must-staple in the certificate
+    update_config_value(config, 'cert_must_staple', localconfig, globalconfig, "false")
+
     # Use a static cert request
     update_config_value(config, 'csr_static', localconfig, globalconfig, "false")
 

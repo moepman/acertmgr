@@ -48,7 +48,8 @@ def cert_get(settings):
         cr = tools.read_pem_file(csr_file, csr=True)
     else:
         print('Generating CSR for {}'.format(settings['domainlist']))
-        cr = tools.new_cert_request(settings['domainlist'], key)
+        must_staple = str(settings.get('cert_must_staple')).lower() == "true"
+        cr = tools.new_cert_request(settings['domainlist'], key, must_staple)
         tools.write_pem_file(cr, csr_file)
 
     # request cert with csr
