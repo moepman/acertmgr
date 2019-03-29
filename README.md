@@ -19,7 +19,7 @@ Optional packages (required to use specified features)
 ------------------------------------------------------
 
   * PyYAML: to parse YAML-formatted configuration files
-  * dnspython: used by dns.nsupdate for RFC2136 dynamic updates to DNS 
+  * dnspython: used by dns.* challenge handlers
   * idna: to allow automatic conversion of unicode domain names to their IDNA2008 counterparts
 
 Setup
@@ -81,12 +81,16 @@ By default the directory (work_dir) containing the working data (csr,certificate
 | key_file                | **d**,g           | Path to store (and load) the private key file                                                                                                | {cert_dir}/{cert_id}.key             |
 | mode                    | **d**,g           | Mode of challenge handling used                                                                                                              | standalone                           |
 | webdir                  | **d**,g           | [webdir] Put acme challenges into this path                                                                                                  | /var/www/acme-challenge/             |
-| webdir_verify           | **d**,g           | [webdir] Verify challenge after writing it                                                                                                   | true                                 |
+| http_verify             | **d**,g           | [webdir/standalone] Verify challenge before attempting authorization                                                                         | true                                 |
 | bind_address            | **d**,g           | [standalone] Serve the challenge using a HTTP server on given IP                                                                             |                                      |
 | port                    | **d**,g           | [standalone] Serve the challenge using a HTTP server on this port                                                                            | 80                                   |
 | dns_ttl                 | **d**,g           | [dns.*] Write TXT records with this TTL (also determines the update wait time at twice this value                                            | 60                                   |
 | dns_updatedomain        | **d**,g           | [dns.*] Write the TXT records to this domain (you have to create the necessary CNAME on the real challenge domain manually)                  |                                      |
+| dns_verify_interval     | **d**,g           | [dns.*] Do verification checks when starting the challenge every {dns_verify_interval} seconds                                               | 10                                   |
+| dns_verify_failtime     | **d**,g           | [dns.*] Fail challenge TXT record verification after {dns_verify_failtime} seconds                                                           | {dns_waittime} + 1                   |
+| dns_verify_waittime     | **d**,g           | [dns.*] Assume DNS challenges are valid after {dns_verify_waittime}                                                                          | 2 * {dns_ttl}                        |
 | nsupdate_server         | **d**,g           | [dns.nsupdate] DNS Server to delegate the update to                                                                                          | {determine from zone SOA}            |
+| nsupdate_verify         | **d**,g           | [dns.*] Verify TXT record on the update server upon creation                                                                                 | true                                 |
 | nsupdate_keyfile        | **d**,g           | [dns.nsupdate] Bind-formatted TSIG key file to use for updates (may be used instead of nsupdate_key*)                                        |                                      |
 | nsupdate_keyname        | **d**,g           | [dns.nsupdate] TSIG key name to use for updates                                                                                              |                                      |
 | nsupdate_keyvalue       | **d**,g           | [dns.nsupdate] TSIG key value to use for updates                                                                                             |                                      |

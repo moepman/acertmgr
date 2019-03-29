@@ -4,7 +4,6 @@
 # dns.nsupdate - rfc2136 based challenge handler
 # Copyright (c) Rudolf Mayerhofer, 2019
 # available under the ISC license, see LICENSE
-import datetime
 import io
 import ipaddress
 import re
@@ -109,10 +108,6 @@ class ChallengeHandler(DNSChallengeHandler):
             domain = domain.parent()
         raise Exception('Could not find Zone SOA for "{0}"'.format(domain))
 
-    @staticmethod
-    def get_challenge_type():
-        return "dns-01"
-
     def __init__(self, config):
         DNSChallengeHandler.__init__(self, config)
         if 'nsupdate_keyfile' in config:
@@ -123,19 +118,34 @@ class ChallengeHandler(DNSChallengeHandler):
                 config.get("nsupdate_keyname"): config.get("nsupdate_keyvalue")
             })
             self.keyalgorithm = config.get("nsupdate_keyalgorithm", DEFAULT_KEY_ALGORITHM)
-        self.dns_server = config.get("nsupdate_server")
-        self.dns_verify = config.get("nsupdate_verify", "true") == "true"
+        self.nsupdate_server = config.get("nsupdate_server")
+        self.nsupdate_verify = config.get("nsupdate_verify", "true") == "true"
+        self.nsupdate_verified = False
 
     def _determine_zone_and_nameserverip(self, domain):
-        nameserver = self.dns_server
+        nameserver = self.nsupdate_server
         if nameserver:
             nameserverip = self._lookup_dns_server(nameserver)
             zone, _ = self._get_soa(domain, nameserverip)
         else:
             zone, nameserver = self._get_soa(domain)
             nameserverip = self._lookup_dns_server(nameserver)
-
         return zone, nameserverip
+
+    def _check_txt_record_value(self, domain, txtvalue, nameserverip, use_tcp=False):
+        try:
+            request = dns.message.make_query(domain, dns.rdatatype.TXT)
+            if use_tcp:
+                response = dns.query.tcp(request, nameserverip)
+            else:
+                response = dns.query.udp(request, nameserverip)
+            for rrset in response.answer:
+                for answer in rrset:
+                    if answer.to_text().strip('"') == txtvalue:
+                        return True
+        except dns.exception.DNSException:
+            # Ignore DNS errors and return failure
+            return False
 
     def add_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
@@ -144,36 +154,21 @@ class ChallengeHandler(DNSChallengeHandler):
         print('Adding \'{} {} IN TXT "{}"\' to {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
 
-        verified = False
-        retry = 0
-        while self.dns_verify and not verified and retry < 5:
-            request = dns.message.make_query(domain, dns.rdatatype.TXT)
-            response = dns.query.tcp(request, nameserverip)
-            for rrset in response.answer:
-                for answer in rrset:
-                    if answer.to_text().strip('"') == txtvalue:
-                        verified = True
-                        print('Verified \'{} {} IN TXT "{}"\' on {}'.format(domain,
-                                                                            self.dns_ttl,
-                                                                            txtvalue,
-                                                                            nameserverip))
-                        break
-            if not verified:
-                time.sleep(1)
-                retry += 1
-
-        if not self.dns_verify or verified:
-            # Return a valid time at twice the given TTL (to allow DNS to propagate)
-            return datetime.datetime.now() + datetime.timedelta(seconds=2 * self.dns_ttl)
-        else:
-            raise ValueError('Failed to verify \'{} {} IN TXT "{}"\' on {}'.format(domain,
-                                                                                   self.dns_ttl,
-                                                                                   txtvalue,
-                                                                                   nameserverip))
-
     def remove_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.delete(domain, dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.TXT, txtvalue))
-        print('Deleting \'{} 60 IN TXT "{}"\' from {}'.format(domain, txtvalue, nameserverip))
+        print('Deleting \'{} {} IN TXT "{}"\' from {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
+
+    def verify_dns_record(self, domain, txtvalue):
+        if self.nsupdate_verify and not self.nsupdate_verified:
+            _, nameserverip = self._determine_zone_and_nameserverip(domain)
+            if self._check_txt_record_value(domain, txtvalue, nameserverip, use_tcp=True):
+                print('Verified \'{} {} IN TXT "{}"\' on {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
+                self.nsupdate_verified = True
+            else:
+                # Master DNS verification failed. Return immediately and try again.
+                return False
+
+        return DNSChallengeHandler.verify_dns_record(self, domain, txtvalue)

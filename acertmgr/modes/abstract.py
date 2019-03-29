@@ -14,7 +14,6 @@ class AbstractChallengeHandler:
     def get_challenge_type():
         raise NotImplementedError
 
-    # @return datetime after which the challenge is valid
     def create_challenge(self, domain, thumbprint, token):
         raise NotImplementedError
 
@@ -22,9 +21,9 @@ class AbstractChallengeHandler:
         raise NotImplementedError
 
     # Optional: Indicate when a challenge request is imminent
-    def start_challenge(self):
+    def start_challenge(self, domain, thumbprint, token):
         pass
 
     # Optional: Indicate when a challenge response has been received
-    def stop_challenge(self):
+    def stop_challenge(self, domain, thumbprint, token):
         pass

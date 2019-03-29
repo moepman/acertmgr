@@ -7,7 +7,6 @@
 # available under the ISC license, see LICENSE
 
 import copy
-import datetime
 import json
 import re
 import time
@@ -98,7 +97,6 @@ class ACMEAuthority(AbstractACMEAuthority):
 
         challenges = dict()
         tokens = dict()
-        valid_times = list()
         # verify each domain
         try:
             for domain in domains:
@@ -120,16 +118,11 @@ class ACMEAuthority(AbstractACMEAuthority):
                 if domain not in challenge_handlers:
                     raise ValueError("No challenge handler given for domain: {0}".format(domain))
 
-                valid_times.append(
-                    challenge_handlers[domain].create_challenge(domain, account_thumbprint, tokens[domain]))
+                challenge_handlers[domain].create_challenge(domain, account_thumbprint, tokens[domain])
 
-            print("Waiting until challenges are valid ({})".format(",".join([str(x) for x in valid_times])))
-            for valid_time in valid_times:
-                while datetime.datetime.now() < valid_time:
-                    time.sleep(1)
-
+            # after all challenges are created, start processing authorizations
             for domain in domains:
-                challenge_handlers[domain].start_challenge()
+                challenge_handlers[domain].start_challenge(domain, account_thumbprint, tokens[domain])
                 try:
                     print("Starting key authorization")
                     # notify challenge are met
@@ -158,7 +151,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                             raise ValueError("{0} challenge did not pass: {1}".format(
                                 domain, challenge_status))
                 finally:
-                    challenge_handlers[domain].stop_challenge()
+                    challenge_handlers[domain].stop_challenge(domain, account_thumbprint, tokens[domain])
         finally:
             # Destroy challenge handlers in reverse order to replay
             # any saved state information in the handlers correctly

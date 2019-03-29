@@ -11,12 +11,11 @@ try:
 except ImportError:
     from http.server import HTTPServer, BaseHTTPRequestHandler
 
-import datetime
 import re
 import socket
 import threading
 
-from acertmgr.modes.abstract import AbstractChallengeHandler
+from acertmgr.modes.webdir import HTTPChallengeHandler
 
 HTTPServer.allow_reuse_address = True
 
@@ -25,9 +24,9 @@ class HTTPServer6(HTTPServer):
     address_family = socket.AF_INET6
 
 
-class ChallengeHandler(AbstractChallengeHandler):
+class ChallengeHandler(HTTPChallengeHandler):
     def __init__(self, config):
-        AbstractChallengeHandler.__init__(self, config)
+        HTTPChallengeHandler.__init__(self, config)
         bind_address = config.get("bind_address", "")
         port = int(config.get("port", 80))
 
@@ -60,24 +59,20 @@ class ChallengeHandler(AbstractChallengeHandler):
         except socket.gaierror:
             self.server = HTTPServer((bind_address, port), _HTTPRequestHandler)
 
-    @staticmethod
-    def get_challenge_type():
-        return "http-01"
-
     def create_challenge(self, domain, thumbprint, token):
         self.challenges[token] = "{0}.{1}".format(token, thumbprint)
-        return datetime.datetime.now()
 
     def destroy_challenge(self, domain, thumbprint, token):
         del self.challenges[token]
 
-    def start_challenge(self):
+    def start_challenge(self, domain, thumbprint, token):
         def _():
             self.server.serve_forever()
 
         self.server_thread = threading.Thread(target=_)
         self.server_thread.start()
+        HTTPChallengeHandler.start_challenge(self, domain, thumbprint, token)
 
-    def stop_challenge(self):
+    def stop_challenge(self, domain, thumbprint, token):
         self.server.shutdown()
         self.server_thread.join()

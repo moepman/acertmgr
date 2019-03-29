@@ -6,7 +6,6 @@
 # available under the ISC license, see LICENSE
 
 import copy
-import datetime
 import json
 import re
 import time
@@ -159,7 +158,6 @@ class ACMEAuthority(AbstractACMEAuthority):
         authorizations = list()
         # verify each domain
         try:
-            valid_times = list()
             for authorizationUrl in order['authorizations']:
                 # get new challenge
                 code, authorization, _ = self._request_url(authorizationUrl)
@@ -182,20 +180,17 @@ class ACMEAuthority(AbstractACMEAuthority):
                 if authorization['_domain'] not in challenge_handlers:
                     raise ValueError("No challenge handler given for domain: {0}".format(authorization['_domain']))
 
-                valid_times.append(
-                    challenge_handlers[authorization['_domain']].create_challenge(authorization['identifier']['value'],
-                                                                                  account_thumbprint,
-                                                                                  authorization['_token']))
+                challenge_handlers[authorization['_domain']].create_challenge(authorization['identifier']['value'],
+                                                                              account_thumbprint,
+                                                                              authorization['_token'])
                 authorizations.append(authorization)
 
-            print("Waiting until challenges are valid ({})".format(",".join([str(x) for x in valid_times])))
-            for valid_time in valid_times:
-                while datetime.datetime.now() < valid_time:
-                    time.sleep(1)
-
+            # after all challenges are created, start processing authorizations
             for authorization in authorizations:
                 print("Starting verification of {}".format(authorization['_domain']))
-                challenge_handlers[authorization['_domain']].start_challenge()
+                challenge_handlers[authorization['_domain']].start_challenge(authorization['identifier']['value'],
+                                                                             account_thumbprint,
+                                                                             authorization['_token'])
                 try:
                     # notify challenge is met
                     code, challenge_status, _ = self._request_acme_url(authorization['_challenge']['url'], {
@@ -212,7 +207,9 @@ class ACMEAuthority(AbstractACMEAuthority):
                         raise ValueError("{0} challenge did not pass: {1}".format(
                             authorization['_domain'], challenge_status))
                 finally:
-                    challenge_handlers[authorization['_domain']].stop_challenge()
+                    challenge_handlers[authorization['_domain']].stop_challenge(authorization['identifier']['value'],
+                                                                                account_thumbprint,
+                                                                                authorization['_token'])
         finally:
             # Destroy challenge handlers in reverse order to replay
             # any saved state information in the handlers correctly
