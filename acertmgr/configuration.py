@@ -65,7 +65,7 @@ def update_config_value(config, name, localconfig, globalconfig, default):
 # @brief convert domain list to idna representation (if applicable
 def idna_convert(domainlist):
     if 'idna' in sys.modules and any(ord(c) >= 128 for c in ''.join(domainlist)):
-        domaintranslation = {}
+        domaintranslation = list()
         for domain in domainlist:
             if any(ord(c) >= 128 for c in domain):
                 # Translate IDNA domain name from a unicode domain (handle wildcards separately)
@@ -73,12 +73,15 @@ def idna_convert(domainlist):
                     idna_domain = "*.{}".format(idna.encode(domain[2:]).decode('utf-8'))
                 else:
                     idna_domain = idna.encode(domain).decode('utf-8')
-                domaintranslation[idna_domain] = domain
+                result = idna_domain, domain
+            else:
+                result = domain, domain
+            domaintranslation.append(result)
         return domaintranslation
     else:
         if 'idna' not in sys.modules:
             print("Unicode domain found but IDNA names could not be translated due to missing idna module")
-        return {}
+        return list()
 
 
 # @brief load the configuration from a file
@@ -93,7 +96,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Convert unicode to IDNA domains
     config['domaintranslation'] = idna_convert(config['domainlist'])
     if len(config['domaintranslation']) > 0:
-        config['domainlist'] = config['domaintranslation'].values()
+        config['domainlist'] = [x for x, _ in config['domaintranslation']]
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -170,6 +173,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Domain challenge handler configuration
     config['handlers'] = dict()
     handlerconfigs = [x for x in localconfig if 'mode' in x]
+    _domaintranslation_dict = {x: y for x, y in config.get('domaintranslation', [])}
     for domain in config['domainlist']:
         # Use global config as base handler config
         cfg = copy.deepcopy(globalconfig)
@@ -180,7 +184,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
             cfg.update(genericfgs[0])
 
         # Update handler config with more specific values (use original names for translated unicode domains)
-        _domain = config.get('domaintranslation', {}).get(domain, domain)
+        _domain = _domaintranslation_dict.get(domain, domain)
         specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == _domain]
         if len(specificcfgs) > 0:
             cfg.update(specificcfgs[0])
@@ -254,7 +258,7 @@ def load():
     if args.force_renew:
         domaintranslation = idna_convert(args.force_renew.split(' '))
         if len(domaintranslation) > 0:
-            runtimeconfig['force_renew'] = domaintranslation.values()
+            runtimeconfig['force_renew'] = [x for x, _ in domaintranslation]
         else:
             runtimeconfig['force_renew'] = args.force_renew.split(' ')
 
