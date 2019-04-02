@@ -57,18 +57,28 @@ class ACMEAuthority(AbstractACMEAuthority):
     def _request_url(self, url, data=None, raw_result=False):
         header = {'Content-Type': 'application/jose+json'}
         if data:
+            # Always encode data to bytes
             data = data.encode('utf-8')
-
-        resp = tools.get_url(url, data, header)
+        try:
+            resp = tools.get_url(url, data, header)
+        except IOError as e:
+            body = getattr(e, "read", e.__str__)()
+            if getattr(body, 'decode', None):
+                # Decode function available? Use it to get a proper str
+                body = body.decode('utf-8')
+            return getattr(e, "code", 999), body, {}
 
         # Store next Replay-Nonce if it is in the header
         if 'Replay-Nonce' in resp.headers:
             self.nonce = resp.headers['Replay-Nonce']
 
         body = resp.read()
+        if getattr(body, 'decode', None):
+            # Decode function available? Use it to get a proper str
+            body = body.decode('utf-8')
         if not raw_result and len(body) > 0:
             try:
-                body = json.loads(body.decode('utf-8'))
+                body = json.loads(body)
             except json.JSONDecodeError as e:
                 raise ValueError('Could not parse non-raw result (expected JSON)', e)
 
@@ -99,10 +109,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             "payload": payload64,
             "signature": tools.bytes_to_base64url(out),
         })
-        try:
-            return self._request_url(url, data, raw_result)
-        except IOError as e:
-            return getattr(e, "code", None), getattr(e, "read", e.__str__)(), {}
+        return self._request_url(url, data, raw_result)
 
     # @brief send a request to authority
     def _request_endpoint(self, request, data=None, raw_result=False):
@@ -243,7 +250,7 @@ class ACMEAuthority(AbstractACMEAuthority):
 
         cert_dict = re.match((r'(?P<cert>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)\n\n'
                               r'(?P<ca>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)?'),
-                             certificate.decode('utf-8'), re.DOTALL).groupdict()
+                             certificate, re.DOTALL).groupdict()
         cert = tools.convert_pem_str_to_cert(cert_dict['cert'])
         if cert_dict['ca'] is None:
             ca = tools.download_issuer_ca(cert)
