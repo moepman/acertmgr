@@ -31,6 +31,12 @@ class InvalidCertificateError(Exception):
     pass
 
 
+# @brief a simple, portable indent function
+def indent(text, spaces=0):
+    ind = ' ' * spaces
+    return os.linesep.join(ind + line for line in text.splitlines())
+
+
 # @brief wrapper for log output
 def log(msg, exc=None, error=False, warning=False):
     if error:
@@ -49,8 +55,7 @@ def log(msg, exc=None, error=False, warning=False):
         else:
             formatted_exc = traceback.format_exception(type(exc), exc, getattr(exc, '__traceback__', None))
         exc_string = ''.join(formatted_exc) if isinstance(formatted_exc, list) else str(formatted_exc)
-        indent = ' ' * len(prefix)
-        output += os.linesep + os.linesep.join(indent + line for line in exc_string.splitlines())
+        output += os.linesep + indent(exc_string, len(prefix))
 
     if error or warning:
         sys.stderr.write(output + os.linesep)

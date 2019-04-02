@@ -185,10 +185,22 @@ def main():
                 try:
                     # Run actions in a shell environment (to allow shell syntax) as stated in the configuration
                     output = subprocess.check_output(action, shell=True, stderr=subprocess.STDOUT)
-                    log("Executed '{}' successfully: {}".format(action, output))
+                    logmsg = "Action succeeded: {}".format(action)
+                    if len(output) > 0:
+                        if getattr(output, 'decode', None):
+                            # Decode function available? Use it to get a proper str
+                            output = output.decode('utf-8')
+                        logmsg += os.linesep + tools.indent(output, 18)  # 18 = len("Action succeeded: ")
+                    log(logmsg)
                 except subprocess.CalledProcessError as e:
-                    log("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output), e,
-                        error=True)
+                    output = e.output
+                    logmsg = "Action failed: ({}) {}".format(e.returncode, e.cmd)
+                    if len(output) > 0:
+                        if getattr(output, 'decode', None):
+                            # Decode function available? Use it to get a proper str
+                            output = output.decode('utf-8')
+                        logmsg += os.linesep + tools.indent(output, 15)  # 15 = len("Action failed: ")
+                    log(logmsg, error=True)
                     exceptions.append(e)
                     deployment_success = False
 
