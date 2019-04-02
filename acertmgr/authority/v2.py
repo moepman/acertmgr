@@ -169,20 +169,26 @@ class ACMEAuthority(AbstractACMEAuthority):
 
                 authorization['_domain'] = "*.{}".format(authorization['identifier']['value']) if \
                     'wildcard' in authorization and authorization['wildcard'] else authorization['identifier']['value']
+
+                if authorization.get('status', 'no-status-found') == 'valid':
+                    log("{} has already been authorized".format(authorization['_domain']))
+                    continue
+                if authorization['_domain'] not in challenge_handlers:
+                    raise ValueError("No challenge handler given for domain: {0}".format(authorization['_domain']))
                 log("Authorizing {0}".format(authorization['_domain']))
 
                 # create the challenge
-                matching_challenges = [c for c in authorization['challenges'] if
-                                       c['type'] == challenge_handlers[authorization['_domain']].get_challenge_type()]
+                ctype = challenge_handlers[authorization['_domain']].get_challenge_type()
+                matching_challenges = [c for c in authorization['challenges'] if c['type'] == ctype]
                 if len(matching_challenges) == 0:
-                    raise ValueError("Error no challenge matching {0} found: {1}".format(
-                        challenge_handlers[authorization['_domain']].get_challenge_type(), authorization))
+                    raise ValueError("Error no challenge matching {0} found: {1}".format(ctype, authorization))
+
                 authorization['_challenge'] = matching_challenges[0]
+                if authorization['_challenge'].get('status', 'no-status-found') == 'valid':
+                    log("{} has already been authorized using {}".format(authorization['_domain'], ctype))
+                    continue
+
                 authorization['_token'] = re.sub(r"[^A-Za-z0-9_\-]", "_", authorization['_challenge']['token'])
-
-                if authorization['_domain'] not in challenge_handlers:
-                    raise ValueError("No challenge handler given for domain: {0}".format(authorization['_domain']))
-
                 challenge_handlers[authorization['_domain']].create_challenge(authorization['identifier']['value'],
                                                                               account_thumbprint,
                                                                               authorization['_token'])

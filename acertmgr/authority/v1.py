@@ -94,6 +94,7 @@ class ACMEAuthority(AbstractACMEAuthority):
 
         challenges = dict()
         tokens = dict()
+        authdomains = list()
         # verify each domain
         try:
             for domain in domains:
@@ -108,7 +109,11 @@ class ACMEAuthority(AbstractACMEAuthority):
                     raise ValueError("Error requesting challenges: {0} {1}".format(code, result))
 
                 # create the challenge
-                challenges[domain] = [c for c in json.loads(result.decode('utf8'))['challenges'] if
+                authz = json.loads(result.decode('utf8'))
+                if authz.get('status', 'no-status-found') == 'valid':
+                    log("{} has already been verified".format(domain))
+                    continue
+                challenges[domain] = [c for c in authz['challenges'] if
                                       c['type'] == challenge_handlers[domain].get_challenge_type()][0]
                 tokens[domain] = re.sub(r"[^A-Za-z0-9_\-]", "_", challenges[domain]['token'])
 
@@ -116,9 +121,10 @@ class ACMEAuthority(AbstractACMEAuthority):
                     raise ValueError("No challenge handler given for domain: {0}".format(domain))
 
                 challenge_handlers[domain].create_challenge(domain, account_thumbprint, tokens[domain])
+                authdomains.append(domain)
 
             # after all challenges are created, start processing authorizations
-            for domain in domains:
+            for domain in authdomains:
                 challenge_handlers[domain].start_challenge(domain, account_thumbprint, tokens[domain])
                 try:
                     log("Starting key authorization")
