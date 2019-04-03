@@ -69,7 +69,7 @@ setup(
         "six",
     ],
     extras_require={
-        "dns.nsupdate": [
+        "dns": [
             "dnspython",
         ],
         "yaml": [
@@ -77,6 +77,9 @@ setup(
         ],
         "idna": [
             "idna",
+        ],
+        "ocsp-must-staple": [
+            "cryptography>=2.1",
         ],
     },
     entry_points={

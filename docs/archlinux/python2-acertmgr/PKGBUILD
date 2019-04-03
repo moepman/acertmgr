@@ -7,9 +7,11 @@ arch=('any')
 url='https://github.com/moepman/acertmgr'
 license=('ISC')
 depends=('python2-cryptography')
-optdepends=('yaml: python2-yaml'
-            'idna: python2-idna'
-	        'dns.nsupdate: python2-dnspython')
+optdepends=('python2-yaml: Support config files in YAML format'
+            'python2-idna: Support conversion of unicode domains'
+	    'python2-dnspython: Support for dns challenge handlers'
+	    'python2-cryptography>=2.1: Support for the OCSP must-staple flag'
+	   )
 makedepends=('git')
 conflicts=('python-acertmgr')
 provides=('python-acertmgr')
