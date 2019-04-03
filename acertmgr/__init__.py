@@ -118,14 +118,20 @@ def cert_put(settings):
     return crt_action
 
 
-def cert_revoke(cert, configs, reason=None):
+def cert_revoke(cert, configs, fallback_authority, reason=None):
     domains = set(tools.get_cert_domains(cert))
+    acmeconfig = None
     for config in configs:
         if domains == set(config['domainlist']):
-            acme = authority(config['authority'])
-            acme.register_account()
-            acme.revoke_crt(cert, reason)
-            return
+            acmeconfig = config['authority']
+            break
+    if not acmeconfig:
+        acmeconfig = fallback_authority
+        log("No matching authority found to revoke {}: {}, using globalconfig/defaults".format(tools.get_cert_cn(cert),
+            tools.get_cert_domains(cert)), warning=True)
+    acme = authority(acmeconfig)
+    acme.register_account()
+    acme.revoke_crt(cert, reason)
 
 
 def main():
@@ -134,7 +140,10 @@ def main():
     if runtimeconfig.get('mode') == 'revoke':
         # Mode: revoke certificate
         log("Revoking {}".format(runtimeconfig['revoke']))
-        cert_revoke(tools.read_pem_file(runtimeconfig['revoke']), domainconfigs, runtimeconfig['revoke_reason'])
+        cert_revoke(tools.read_pem_file(runtimeconfig['revoke']),
+                    domainconfigs,
+                    runtimeconfig['fallback_authority'],
+                    runtimeconfig['revoke_reason'])
     else:
         # Mode: issue certificates (implicit)
         # post-update actions (run only once)
@@ -190,7 +199,7 @@ def main():
                     log("Revoking '{}' valid until {} as superseded".format(
                         tools.get_cert_cn(superseded_cert),
                         tools.get_cert_valid_until(superseded_cert)))
-                    cert_revoke(superseded_cert, domainconfigs, reason=4)  # reason=4 is superseded
+                    cert_revoke(superseded_cert, domainconfigs, runtimeconfig['fallback_authority'], reason=4)
                 except Exception as e:
                     log("Certificate supersede revoke failed", e, error=True)
                     exceptions.append(e)

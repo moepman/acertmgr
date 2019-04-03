@@ -86,6 +86,28 @@ def idna_convert(domainlist):
         return list()
 
 
+# @brief parse authority from config
+def parse_authority(localconfig, globalconfig, runtimeconfig):
+    authority = {}
+    # - API version
+    update_config_value(authority, 'api', localconfig, globalconfig, DEFAULT_API)
+
+    # - Certificate authority
+    update_config_value(authority, 'authority', localconfig, globalconfig, DEFAULT_AUTHORITY)
+
+    # - Certificate authority ToS agreement
+    update_config_value(authority, 'authority_tos_agreement', localconfig, globalconfig,
+                        runtimeconfig['authority_tos_agreement'])
+
+    # - Certificate authority contact email addresses
+    update_config_value(authority, 'authority_contact_email', localconfig, globalconfig, None)
+
+    # - Account key path
+    update_config_value(authority, 'account_key', localconfig, globalconfig,
+                        os.path.join(runtimeconfig['work_dir'], "account.key"))
+    return authority
+
+
 # @brief load the configuration from a file
 def parse_config_entry(entry, globalconfig, runtimeconfig):
     config = dict()
@@ -104,24 +126,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     config['defaults'] = globalconfig.get('defaults', {})
 
     # Authority related config options
-    config['authority'] = {}
-
-    # - API version
-    update_config_value(config['authority'], 'api', localconfig, globalconfig, DEFAULT_API)
-
-    # - Certificate authority
-    update_config_value(config['authority'], 'authority', localconfig, globalconfig, DEFAULT_AUTHORITY)
-
-    # - Certificate authority ToS agreement
-    update_config_value(config['authority'], 'authority_tos_agreement', localconfig, globalconfig,
-                        runtimeconfig['authority_tos_agreement'])
-
-    # - Certificate authority contact email addresses
-    update_config_value(config['authority'], 'authority_contact_email', localconfig, globalconfig, None)
-
-    # - Account key path
-    update_config_value(config['authority'], 'account_key', localconfig, globalconfig,
-                        os.path.join(runtimeconfig['work_dir'], "account.key"))
+    config['authority'] = parse_authority(localconfig, globalconfig, runtimeconfig)
 
     # Certificate directory
     update_config_value(config, 'cert_dir', localconfig, globalconfig, runtimeconfig['work_dir'])
@@ -309,5 +314,8 @@ def load():
                         config_fd.seek(0)
                         for entry in yaml.safe_load(config_fd).items():
                             domainconfigs.append(parse_config_entry(entry, globalconfig, runtimeconfig))
+
+    # Define a fallback authority from global configuration / defaults
+    runtimeconfig['fallback_authority'] = parse_authority([], globalconfig, runtimeconfig)
 
     return runtimeconfig, domainconfigs
