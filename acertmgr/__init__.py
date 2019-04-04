@@ -16,12 +16,13 @@ import subprocess
 from acertmgr import configuration, tools
 from acertmgr.authority import authority
 from acertmgr.modes import challenge_handler
+from acertmgr.tools import log
 
 
 # @brief fetch new certificate from letsencrypt
 # @param settings the domain's configuration options
 def cert_get(settings):
-    print("Getting certificate for %s" % settings['domainlist'])
+    log("Getting certificate for %s" % settings['domainlist'])
 
     acme = authority(settings['authority'])
     acme.register_account()
@@ -38,16 +39,16 @@ def cert_get(settings):
     if os.path.isfile(key_file):
         key = tools.read_pem_file(key_file, key=True)
     else:
-        print("SSL key not found at '{0}'. Creating {1} bit key.".format(key_file, key_length))
+        log("SSL key not found at '{0}'. Creating {1} bit key.".format(key_file, key_length))
         key = tools.new_ssl_key(key_file, key_length)
 
     # create ssl csr
     csr_file = settings['csr_file']
     if os.path.isfile(csr_file) and str(settings['csr_static']).lower() == 'true':
-        print('Loading CSR from {}'.format(csr_file))
+        log('Loading CSR from {}'.format(csr_file))
         cr = tools.read_pem_file(csr_file, csr=True)
     else:
-        print('Generating CSR for {}'.format(settings['domainlist']))
+        log('Generating CSR for {}'.format(settings['domainlist']))
         must_staple = str(settings.get('cert_must_staple')).lower() == "true"
         cr = tools.new_cert_request(settings['domainlist'], key, must_staple)
         tools.write_pem_file(cr, csr_file)
@@ -57,7 +58,8 @@ def cert_get(settings):
 
     #  if resulting certificate is valid: store in final location
     if tools.is_cert_valid(crt, settings['ttl_days']):
-        print("Certificate '{}' renewed and valid until {}".format(crt, crt.not_valid_after))
+        log("Certificate '{}' renewed and valid until {}".format(tools.get_cert_cn(crt),
+                                                                 tools.get_cert_valid_until(crt)))
         tools.write_pem_file(crt, settings['cert_file'], stat.S_IREAD)
         if (not str(settings.get('ca_static')).lower() == 'true' or not os.path.exists(settings['ca_file'])) \
                 and ca is not None:
@@ -107,11 +109,11 @@ def cert_put(settings):
     try:
         os.chown(crt_path, uid, gid)
     except OSError:
-        print('Warning: Could not set certificate file ownership!')
+        log('Could not set certificate file ownership!', warning=True)
     try:
         os.chmod(crt_path, int(crt_perm, 8))
     except OSError:
-        print('Warning: Could not set certificate file permissions!')
+        log('Could not set certificate file permissions!', warning=True)
 
     return crt_action
 
@@ -131,7 +133,7 @@ def main():
     runtimeconfig, domainconfigs = configuration.load()
     if runtimeconfig.get('mode') == 'revoke':
         # Mode: revoke certificate
-        print("Revoking {}".format(runtimeconfig['revoke']))
+        log("Revoking {}".format(runtimeconfig['revoke']))
         cert_revoke(tools.read_pem_file(runtimeconfig['revoke']), domainconfigs, runtimeconfig['revoke_reason'])
     else:
         # Mode: issue certificates (implicit)
@@ -152,7 +154,7 @@ def main():
                     if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
                         superseded.add(cert)
             except Exception as e:
-                print("Certificate issue/renew failed: {}".format(e))
+                log("Certificate issue/renew failed", e, error=True)
                 exceptions.append(e)
 
         # deploy new certificates after all are renewed
@@ -161,10 +163,10 @@ def main():
             try:
                 for cfg in config['actions']:
                     if not tools.target_is_current(cfg['path'], config['cert_file']):
-                        print("Updating '{}' due to newer version".format(cfg['path']))
+                        log("Updating '{}' due to newer version".format(cfg['path']))
                         actions.add(cert_put(cfg))
             except Exception as e:
-                print("Certificate deployment failed: {}".format(e))
+                log("Certificate deployment failed", e, error=True)
                 exceptions.append(e)
                 deployment_success = False
 
@@ -174,9 +176,10 @@ def main():
                 try:
                     # Run actions in a shell environment (to allow shell syntax) as stated in the configuration
                     output = subprocess.check_output(action, shell=True, stderr=subprocess.STDOUT)
-                    print("Executed '{}' successfully: {}".format(action, output))
+                    log("Executed '{}' successfully: {}".format(action, output))
                 except subprocess.CalledProcessError as e:
-                    print("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output))
+                    log("Execution of '{}' failed with error '{}': {}".format(e.cmd, e.returncode, e.output), e,
+                        error=True)
                     exceptions.append(e)
                     deployment_success = False
 
@@ -184,14 +187,14 @@ def main():
         if deployment_success:
             for superseded_cert in superseded:
                 try:
-                    print("Revoking previous certificate '{}' valid until {} as superseded".format(
-                        superseded_cert,
-                        superseded_cert.not_valid_after))
+                    log("Revoking '{}' valid until {} as superseded".format(
+                        tools.get_cert_cn(superseded_cert),
+                        tools.get_cert_valid_until(superseded_cert)))
                     cert_revoke(superseded_cert, domainconfigs, reason=4)  # reason=4 is superseded
                 except Exception as e:
-                    print("Certificate supersede revoke failed: {}".format(e))
+                    log("Certificate supersede revoke failed", e, error=True)
                     exceptions.append(e)
 
         # throw a RuntimeError with all exceptions caught while working if there were any
         if len(exceptions) > 0:
-            raise RuntimeError("{} exception(s) occurred during runtime: {}".format(len(exceptions), exceptions))
+            raise RuntimeError("{} exception(s) occurred during processing".format(len(exceptions)))

@@ -13,6 +13,7 @@ import time
 
 from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
+from acertmgr.tools import log
 
 
 class ACMEAuthority(AbstractACMEAuthority):
@@ -70,11 +71,11 @@ class ACMEAuthority(AbstractACMEAuthority):
             "agreement": self.agreement,
         })
         if code == 201:
-            print("Registered!")
+            log("Registered!")
             self.registered_account = True
             return True
         elif code == 409:
-            print("Already registered!")
+            log("Already registered!")
             self.registered_account = True
             return False
         else:
@@ -96,7 +97,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         # verify each domain
         try:
             for domain in domains:
-                print("Verifying {0}...".format(domain))
+                log("Verifying {0}...".format(domain))
 
                 # get new challenge
                 code, result = self._send_signed(self.ca + "/acme/new-authz", header, {
@@ -120,7 +121,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             for domain in domains:
                 challenge_handlers[domain].start_challenge(domain, account_thumbprint, tokens[domain])
                 try:
-                    print("Starting key authorization")
+                    log("Starting key authorization")
                     # notify challenge are met
                     keyauthorization = "{0}.{1}".format(tokens[domain], account_thumbprint)
                     code, result = self._send_signed(challenges[domain]['uri'], header, {
@@ -141,7 +142,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                         if challenge_status['status'] == "pending":
                             time.sleep(2)
                         elif challenge_status['status'] == "valid":
-                            print("{0} verified!".format(domain))
+                            log("{0} verified!".format(domain))
                             break
                         else:
                             raise ValueError("{0} challenge did not pass: {1}".format(
@@ -155,10 +156,10 @@ class ACMEAuthority(AbstractACMEAuthority):
                 try:
                     challenge_handlers[domain].destroy_challenge(domain, account_thumbprint, tokens[domain])
                 except Exception as e:
-                    print('Challenge destruction failed: {}'.format(e))
+                    log('Challenge destruction failed: {}'.format(e), error=True)
 
         # get the new certificate
-        print("Signing certificate...")
+        log("Signing certificate...")
         code, result = self._send_signed(self.ca + "/acme/new-cert", header, {
             "resource": "new-cert",
             "csr": tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(csr)),
@@ -167,7 +168,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             raise ValueError("Error signing certificate: {0} {1}".format(code, result))
 
         # return signed certificate!
-        print("Certificate signed!")
+        log("Certificate signed!")
         cert = tools.convert_der_bytes_to_cert(result)
         return cert, tools.download_issuer_ca(cert)
 
@@ -181,6 +182,6 @@ class ACMEAuthority(AbstractACMEAuthority):
             payload['reason'] = int(reason)
         code, result = self._send_signed(self.ca + "/acme/revoke-cert", header, payload)
         if code < 400:
-            print("Revocation successful")
+            log("Revocation successful")
         else:
             raise ValueError("Revocation failed: {}".format(result))

@@ -10,6 +10,7 @@ import json
 import os
 
 from acertmgr import tools
+from acertmgr.tools import log
 
 authorities = dict()
 
@@ -23,10 +24,10 @@ def authority(settings):
     else:
         acc_file = settings['account_key']
         if os.path.isfile(acc_file):
-            print("Reading account key from {}".format(acc_file))
+            log("Reading account key from {}".format(acc_file))
             acc_key = tools.read_pem_file(acc_file, key=True)
         else:
-            print("Account key not found at '{0}'. Creating key.".format(acc_file))
+            log("Account key not found at '{0}'. Creating key.".format(acc_file))
             acc_key = tools.new_account_key(acc_file)
 
         authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))

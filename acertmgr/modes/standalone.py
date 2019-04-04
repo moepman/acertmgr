@@ -16,6 +16,7 @@ import socket
 import threading
 
 from acertmgr.modes.webdir import HTTPChallengeHandler
+from acertmgr.tools import log
 
 HTTPServer.allow_reuse_address = True
 
@@ -36,7 +37,7 @@ class ChallengeHandler(HTTPChallengeHandler):
         # Custom HTTP request handler
         class _HTTPRequestHandler(BaseHTTPRequestHandler):
             def log_message(self, fmt, *args):
-                print("Request from '%s': %s" % (self.address_string(), fmt % args))
+                log("Request from '%s': %s" % (self.address_string(), fmt % args))
 
             def do_GET(self):
                 # Match token on http://<domain>/.well-known/acme-challenge/<token>

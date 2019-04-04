@@ -14,6 +14,8 @@ import json
 import os
 import sys
 
+from acertmgr.tools import log
+
 try:
     import idna
 except ImportError:
@@ -80,7 +82,7 @@ def idna_convert(domainlist):
         return domaintranslation
     else:
         if 'idna' not in sys.modules:
-            print("Unicode domain found but IDNA names could not be translated due to missing idna module")
+            log("Unicode domain(s) found but IDNA names could not be translated due to missing idna module", error=True)
         return list()
 
 
@@ -143,14 +145,14 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
 
     # SSL cert location (with compatibility to older versions)
     if 'server_cert' in globalconfig:
-        print("WARNING: Legacy configuration directive 'server_cert' used. Support will be removed in 1.0")
+        log("Legacy configuration directive 'server_cert' used. Support will be removed in 1.0", warning=True)
     update_config_value(config, 'cert_file', localconfig, globalconfig,
                         globalconfig.get('server_cert',
                                          os.path.join(config['cert_dir'], "{}.crt".format(config['id']))))
 
     # SSL key location (with compatibility to older versions)
     if 'server_key' in globalconfig:
-        print("WARNING: Legacy configuration directive 'server_key' used. Support will be removed in 1.0")
+        log("Legacy configuration directive 'server_key' used. Support will be removed in 1.0", warning=True)
     update_config_value(config, 'key_file', localconfig, globalconfig,
                         globalconfig.get('server_key',
                                          os.path.join(config['cert_dir'], "{}.key".format(config['id']))))
@@ -162,11 +164,13 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # SSL CA location / use static
     update_config_value(config, 'ca_file', localconfig, globalconfig,
                         globalconfig.get('server_ca', config['defaults'].get('server_ca',
-                                         os.path.join(config['cert_dir'], "{}.ca".format(config['id'])))))
+                                                                             os.path.join(config['cert_dir'],
+                                                                                          "{}.ca".format(
+                                                                                              config['id'])))))
     update_config_value(config, 'ca_static', localconfig, globalconfig, "false")
     if 'server_ca' in globalconfig or 'server_ca' in config['defaults']:
         config['ca_static'] = "true"
-        print("WARNING: Legacy configuration directive 'server_ca' used. Support will be removed in 1.0")
+        log("Legacy configuration directive 'server_ca' used. Support removed in 1.0", warning=True)
 
     # Domain action configuration
     config['actions'] = list()
@@ -221,7 +225,8 @@ def load():
     if args.config_file:
         global_config_file = args.config_file
     elif os.path.isfile(LEGACY_CONF_FILE):
-        print("WARNING: Legacy config file '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_FILE, DEFAULT_CONF_FILE))
+        log("Legacy config file '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_FILE, DEFAULT_CONF_FILE),
+            warning=True)
         global_config_file = LEGACY_CONF_FILE
     else:
         global_config_file = DEFAULT_CONF_FILE
@@ -230,7 +235,7 @@ def load():
     if args.config_dir:
         domain_config_dir = args.config_dir
     elif os.path.isdir(LEGACY_CONF_DIR):
-        print("WARNING: Legacy config dir '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_DIR, DEFAULT_CONF_DIR))
+        log("Legacy config dir '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_DIR, DEFAULT_CONF_DIR), warning=True)
         domain_config_dir = LEGACY_CONF_DIR
     else:
         domain_config_dir = DEFAULT_CONF_DIR
@@ -240,7 +245,7 @@ def load():
     if args.work_dir:
         runtimeconfig['work_dir'] = args.work_dir
     elif os.path.isdir(LEGACY_WORK_DIR) and domain_config_dir == LEGACY_CONF_DIR:
-        print("WARNING: Legacy work dir '{}' used. Move to config-dir for 1.0".format(LEGACY_WORK_DIR))
+        log("Legacy work dir '{}' used. Move to config-dir for 1.0".format(LEGACY_WORK_DIR), warning=True)
         runtimeconfig['work_dir'] = LEGACY_WORK_DIR
     else:
         runtimeconfig['work_dir'] = domain_config_dir

@@ -12,6 +12,7 @@ import time
 
 from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
+from acertmgr.tools import log
 
 
 class ACMEAuthority(AbstractACMEAuthority):
@@ -41,7 +42,8 @@ class ACMEAuthority(AbstractACMEAuthority):
                 "newOrder": "{}/acme/new-order".format(self.ca),
                 "revokeCert": "{}/acme/revoke-cert".format(self.ca),
             }
-            print("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory))
+            log("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory),
+                warning=True)
         self.nonce = None
 
         self.algorithm, jwk = tools.get_key_alg_and_jwk(key)
@@ -127,8 +129,8 @@ class ACMEAuthority(AbstractACMEAuthority):
         if code < 400 and result['status'] == 'valid':
             self.account_id = headers['Location']
             if 'meta' in self.directory and 'termsOfService' in self.directory['meta']:
-                print("ToS at {} have been accepted.".format(self.directory['meta']['termsOfService']))
-            print("Account registered and valid.".format())
+                log("ToS at {} have been accepted.".format(self.directory['meta']['termsOfService']))
+            log("Account registered and valid on {}.".format(self.ca))
         else:
             raise ValueError("Error registering account: {0} {1}".format(code, result))
 
@@ -142,7 +144,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         account_thumbprint = tools.bytes_to_base64url(
             tools.hash_of_str(json.dumps(self.account_protected['jwk'], sort_keys=True, separators=(',', ':'))))
 
-        print("Ordering certificate for {}".format(domains))
+        log("Ordering certificate for {}".format(domains))
         identifiers = [{'type': 'dns', 'value': domain} for domain in domains]
         code, order, headers = self._request_acme_endpoint('newOrder', {'identifiers': identifiers})
         if code >= 400:
@@ -160,7 +162,7 @@ class ACMEAuthority(AbstractACMEAuthority):
 
                 authorization['_domain'] = "*.{}".format(authorization['identifier']['value']) if \
                     'wildcard' in authorization and authorization['wildcard'] else authorization['identifier']['value']
-                print("Authorizing {0}".format(authorization['_domain']))
+                log("Authorizing {0}".format(authorization['_domain']))
 
                 # create the challenge
                 matching_challenges = [c for c in authorization['challenges'] if
@@ -181,7 +183,7 @@ class ACMEAuthority(AbstractACMEAuthority):
 
             # after all challenges are created, start processing authorizations
             for authorization in authorizations:
-                print("Starting verification of {}".format(authorization['_domain']))
+                log("Starting verification of {}".format(authorization['_domain']))
                 challenge_handlers[authorization['_domain']].start_challenge(authorization['identifier']['value'],
                                                                              account_thumbprint,
                                                                              authorization['_token'])
@@ -196,7 +198,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                         code, challenge_status, _ = self._request_url(authorization['_challenge']['url'])
 
                     if challenge_status.get('status') == "valid":
-                        print("{0} verified".format(authorization['_domain']))
+                        log("{0} verified".format(authorization['_domain']))
                     else:
                         raise ValueError("{0} challenge did not pass: {1}".format(
                             authorization['_domain'], challenge_status))
@@ -212,7 +214,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                     challenge_handlers[authorization['_domain']].destroy_challenge(
                         authorization['identifier']['value'], account_thumbprint, authorization['_token'])
                 except Exception as e:
-                    print('Challenge destruction failed: {}'.format(e))
+                    log('Challenge destruction failed: {}'.format(e), error=True)
 
         # check order status and retry once
         code, order, _ = self._request_url(order_url)
@@ -223,7 +225,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             raise ValueError("Order is still not ready to be finalized: {0} {1}".format(code, order))
 
         # get the new certificate
-        print("Finalizing certificate")
+        log("Finalizing certificate")
         code, finalize, _ = self._request_acme_url(order['finalize'], {
             "csr": tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(csr)),
         })
@@ -232,7 +234,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             code, finalize, _ = self._request_url(order_url)
         if code >= 400:
             raise ValueError("Error finalizing certificate: {0} {1}".format(code, finalize))
-        print("Certificate ready!")
+        log("Certificate ready!")
 
         # return certificate
         code, certificate, _ = self._request_url(finalize['certificate'], raw_result=True)
@@ -259,6 +261,6 @@ class ACMEAuthority(AbstractACMEAuthority):
             payload['reason'] = int(reason)
         code, result, _ = self._request_acme_endpoint("revokeCert", payload)
         if code < 400:
-            print("Revocation successful")
+            log("Revocation successful")
         else:
             raise ValueError("Revocation failed: {}".format(result))

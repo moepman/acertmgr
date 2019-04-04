@@ -13,6 +13,7 @@ import dns.tsigkeyring
 import dns.update
 
 from acertmgr.modes.dns.abstract import DNSChallengeHandler
+from acertmgr.tools import log
 
 DEFAULT_KEY_ALGORITHM = "HMAC-MD5.SIG-ALG.REG.INT"
 
@@ -29,12 +30,9 @@ class ChallengeHandler(DNSChallengeHandler):
                 algorithm = re.search(r"algorithm ([a-zA-Z0-9_-]+?);", key_data, re.DOTALL).group(1)
                 tsig_secret = re.search(r"secret \"(.*?)\"", key_data, re.DOTALL).group(1)
         except IOError as exc:
-            print(exc)
-            raise Exception(
-                "A problem was encountered opening your keyfile, %s." % tsig_key_file)
+            raise ValueError("A problem was encountered opening your keyfile '{}': {}".format(tsig_key_file, exc))
         except AttributeError as exc:
-            print(exc)
-            raise Exception("Unable to decipher the keyname and secret from your keyfile.")
+            raise ValueError("Unable to decipher data from your keyfile: {}".format(exc))
 
         keyring = dns.tsigkeyring.from_text({
             key_name: tsig_secret
@@ -73,14 +71,14 @@ class ChallengeHandler(DNSChallengeHandler):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.add(domain, self.dns_ttl, dns.rdatatype.TXT, txtvalue)
-        print('Adding \'{} {} IN TXT "{}"\' to {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
+        log('Adding \'{} {} IN TXT "{}"\' to {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
 
     def remove_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.delete(domain, dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.TXT, txtvalue))
-        print('Deleting \'{} {} IN TXT "{}"\' from {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
+        log('Deleting \'{} {} IN TXT "{}"\' from {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
         dns.query.tcp(update, nameserverip)
 
     def verify_dns_record(self, domain, txtvalue):
@@ -88,7 +86,7 @@ class ChallengeHandler(DNSChallengeHandler):
             # Verify master DNS only if we don't do a full NS check and it has not yet been verified
             _, nameserverip = self._determine_zone_and_nameserverip(domain)
             if self._check_txt_record_value(domain, txtvalue, nameserverip, use_tcp=True):
-                print('Verified \'{} {} IN TXT "{}"\' on {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
+                log('Verified \'{} {} IN TXT "{}"\' on {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
                 self.nsupdate_verified = True
             else:
                 # Master DNS verification failed. Return immediately and try again.

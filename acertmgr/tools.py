@@ -11,6 +11,8 @@ import binascii
 import datetime
 import io
 import os
+import sys
+import traceback
 
 import six
 from cryptography import x509
@@ -27,6 +29,35 @@ except ImportError:
 
 class InvalidCertificateError(Exception):
     pass
+
+
+# @brief wrapper for log output
+def log(msg, exc=None, error=False, warning=False):
+    if error:
+        prefix = "Error: "
+    elif warning:
+        prefix = "Warning: "
+    else:
+        prefix = ""
+
+    output = prefix + msg
+    if exc:
+        _, exc_value, _ = sys.exc_info()
+        if not getattr(exc, '__traceback__', None) and exc == exc_value:
+            # Traceback handling on Python 2 is ugly, so we only output it if the exception is the current sys one
+            formatted_exc = traceback.format_exc()
+        else:
+            formatted_exc = traceback.format_exception(type(exc), exc, getattr(exc, '__traceback__', None))
+        exc_string = ''.join(formatted_exc) if isinstance(formatted_exc, list) else str(formatted_exc)
+        indent = ' ' * len(prefix)
+        output += os.linesep + os.linesep.join(indent + line for line in exc_string.splitlines())
+
+    if error or warning:
+        sys.stderr.write(output + os.linesep)
+        sys.stderr.flush()  # force flush buffers after message was written for immediate display
+    else:
+        sys.stdout.write(output + os.linesep)
+        sys.stdout.flush()  # force flush buffers after message was written for immediate display
 
 
 # @brief wrapper for downloading an url
@@ -71,7 +102,7 @@ def new_cert_request(names, key, must_staple=False):
         if getattr(x509, 'TLSFeature', None):
             req = req.add_extension(x509.TLSFeature(features=[x509.TLSFeatureType.status_request]), critical=False)
         else:
-            print('OCSP must-staple ignored as current version of cryptography does not support the flag.')
+            log('OCSP must-staple ignored as current version of cryptography does not support the flag.', warning=True)
     req = req.sign(key, hashes.SHA256(), default_backend())
     return req
 
@@ -101,7 +132,7 @@ def new_ssl_key(path=None, key_size=4096):
         try:
             os.chmod(path, int("0400", 8))
         except OSError:
-            print('Warning: Could not set file permissions on {0}!'.format(path))
+            log('Could not set file permissions on {0}!'.format(path), warning=True)
     return private_key
 
 
@@ -128,7 +159,7 @@ def write_pem_file(crt, path, perms=None):
         try:
             os.chmod(path, perms)
         except OSError:
-            print('Warning: Could not set file permissions ({0}) on {1}!'.format(perms, path))
+            log('Could not set file permissions ({0}) on {1}!'.format(perms, path), warning=True)
 
 
 # @brief download the issuer ca for a given certificate
@@ -143,14 +174,14 @@ def download_issuer_ca(cert):
             break
 
     if not ca_issuers:
-        print("Could not determine issuer CA for given certificate: {}".format(cert))
+        log("Could not determine issuer CA for given certificate: {}".format(cert), error=True)
         return None
 
-    print("Downloading CA certificate from {}".format(ca_issuers))
+    log("Downloading CA certificate from {}".format(ca_issuers))
     resp = get_url(ca_issuers)
     code = resp.getcode()
     if code >= 400:
-        print("Could not download issuer CA (error {}) for given certificate: {}".format(code, cert))
+        log("Could not download issuer CA (error {}) for given certificate: {}".format(code, cert), error=True)
         return None
 
     return x509.load_der_x509_certificate(resp.read(), default_backend())
@@ -159,7 +190,7 @@ def download_issuer_ca(cert):
 # @brief determine all san domains on a given certificate
 def get_cert_domains(cert):
     if cert is None:
-        print("WARN: None-certificate has no domains. You have found a bug. Congratulations!")
+        log("None-certificate has no domains. You have found a bug. Congratulations!", warning=True)
         return []
 
     san_cert = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
@@ -167,6 +198,16 @@ def get_cert_domains(cert):
         return [d.value for d in san_cert.value]
     else:
         return [cert.subject.rfc4514_string()[3:], ]  # strip CN= from the result and return as 1 item list
+
+
+# @brief determine certificate cn
+def get_cert_cn(cert):
+    return "CN={}".format(cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value)
+
+
+# @brief determine certificate end of validity
+def get_cert_valid_until(cert):
+    return cert.not_valid_after
 
 
 # @brief convert certificate to PEM format

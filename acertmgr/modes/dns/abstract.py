@@ -18,6 +18,7 @@ import dns.update
 
 from acertmgr import tools
 from acertmgr.modes.abstract import AbstractChallengeHandler
+from acertmgr.tools import log
 
 REGEX_IP4 = r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$'
 REGEX_IP6 = r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}' \
@@ -187,7 +188,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
         if self.verify_dns_record(domain, txtvalue):
             return
         else:
-            print("Waiting until TXT record '{}' is ready".format(domain))
+            log("Waiting until TXT record '{}' is ready".format(domain))
             while failtime > datetime.now():
                 time.sleep(self.dns_verify_interval)
                 if self.verify_dns_record(domain, txtvalue):
@@ -204,7 +205,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
                 ns_ip = self._lookup_ns_ip(domain, nameserverip)
                 if len(ns_ip) > 0 and all(self._check_txt_record_value(domain, txtvalue, ip) for ip in ns_ip):
                     # All NS servers have the necessary TXT record. Succeed immediately!
-                    print("All NS ({}) for '{}' have the correct TXT record".format(','.join(ns_ip), domain))
+                    log("All NS ({}) for '{}' have the correct TXT record".format(','.join(ns_ip), domain))
                     return True
             except (ValueError, dns.exception.DNSException):
                 # Fall back to next verification
@@ -216,7 +217,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
                 nameserverip = self._lookup_ip(self.dns_verify_server)
                 if self._check_txt_record_value(domain, txtvalue, nameserverip):
                     # Verify server confirms the necessary TXT record. Succeed immediately!
-                    print("DNS server '{}' found correct TXT record for '{}'".format(self.dns_verify_server, domain))
+                    log("DNS server '{}' found correct TXT record for '{}'".format(self.dns_verify_server, domain))
                     return True
             except (ValueError, dns.exception.DNSException):
                 # Fall back to next verification
