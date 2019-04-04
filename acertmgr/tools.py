@@ -189,15 +189,14 @@ def download_issuer_ca(cert):
 
 # @brief determine all san domains on a given certificate
 def get_cert_domains(cert):
-    if cert is None:
-        log("None-certificate has no domains. You have found a bug. Congratulations!", warning=True)
-        return []
-
     san_cert = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+    domains = set()
+    domains.add(cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value)
     if san_cert:
-        return [d.value for d in san_cert.value]
-    else:
-        return [cert.subject.rfc4514_string()[3:], ]  # strip CN= from the result and return as 1 item list
+        for d in san_cert.value:
+            domains.add(d.value)
+    # Convert IDNA domain to correct representation and return the list
+    return [x.encode('idna').decode('ascii') if any(ord(c) >= 128 for c in x) else x for x in domains]
 
 
 # @brief determine certificate cn
