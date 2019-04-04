@@ -125,10 +125,10 @@ class ACMEAuthority(AbstractACMEAuthority):
 
             # after all challenges are created, start processing authorizations
             for domain in authdomains:
-                challenge_handlers[domain].start_challenge(domain, account_thumbprint, tokens[domain])
                 try:
-                    log("Starting key authorization")
+                    challenge_handlers[domain].start_challenge(domain, account_thumbprint, tokens[domain])
                     # notify challenge are met
+                    log("Starting key authorization")
                     keyauthorization = "{0}.{1}".format(tokens[domain], account_thumbprint)
                     code, result = self._send_signed(challenges[domain]['uri'], header, {
                         "resource": "challenge",

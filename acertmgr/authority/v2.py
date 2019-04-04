@@ -196,11 +196,11 @@ class ACMEAuthority(AbstractACMEAuthority):
 
             # after all challenges are created, start processing authorizations
             for authorization in authorizations:
-                log("Starting verification of {}".format(authorization['_domain']))
-                challenge_handlers[authorization['_domain']].start_challenge(authorization['identifier']['value'],
-                                                                             account_thumbprint,
-                                                                             authorization['_token'])
                 try:
+                    log("Starting verification of {}".format(authorization['_domain']))
+                    challenge_handlers[authorization['_domain']].start_challenge(authorization['identifier']['value'],
+                                                                                 account_thumbprint,
+                                                                                 authorization['_token'])
                     # notify challenge is met
                     code, challenge_status, _ = self._request_acme_url(authorization['_challenge']['url'], {
                         "keyAuthorization": "{0}.{1}".format(authorization['_token'], account_thumbprint),
