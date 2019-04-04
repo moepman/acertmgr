@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# acertmgr - acme api v2 functions
+# acertmgr - acme api v2 functions (implements RFC8555)
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
@@ -84,17 +84,19 @@ class ACMEAuthority(AbstractACMEAuthority):
 
         return resp.getcode(), body, resp.headers
 
-    # @brief helper function to make signed requests
+    # @brief fetch an url with a signed request
     def _request_acme_url(self, url, payload=None, protected=None, raw_result=False):
-        if not payload:
-            payload = {}
         if not protected:
             protected = {}
-        payload64 = tools.bytes_to_base64url(json.dumps(payload).encode('utf8'))
+
+        if payload:
+            payload64 = tools.bytes_to_base64url(json.dumps(payload).encode('utf8'))
+        else:
+            payload64 = ""  # for POST-as-GET
 
         # Request a new nonce if there is none in cache
         if not self.nonce:
-            self._request_endpoint('newNonce')
+            self._request_url(self.directory['newNonce'])
 
         protected["nonce"] = self.nonce
         protected["url"] = url
@@ -110,10 +112,6 @@ class ACMEAuthority(AbstractACMEAuthority):
             "signature": tools.bytes_to_base64url(out),
         })
         return self._request_url(url, data, raw_result)
-
-    # @brief send a request to authority
-    def _request_endpoint(self, request, data=None, raw_result=False):
-        return self._request_url(self.directory[request], data, raw_result)
 
     # @brief send a signed request to authority
     def _request_acme_endpoint(self, request, payload=None, protected=None, raw_result=False):
@@ -163,7 +161,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         try:
             for authorizationUrl in order['authorizations']:
                 # get new challenge
-                code, authorization, _ = self._request_url(authorizationUrl)
+                code, authorization, _ = self._request_acme_url(authorizationUrl)
                 if code >= 400:
                     raise ValueError("Error requesting authorization: {0} {1}".format(code, authorization))
 
@@ -208,7 +206,7 @@ class ACMEAuthority(AbstractACMEAuthority):
                     # wait for challenge to be verified
                     while code < 400 and challenge_status.get('status') == "pending":
                         time.sleep(5)
-                        code, challenge_status, _ = self._request_url(authorization['_challenge']['url'])
+                        code, challenge_status, _ = self._request_acme_url(authorization['_challenge']['url'])
 
                     if challenge_status.get('status') == "valid":
                         log("{0} verified".format(authorization['_domain']))
@@ -230,10 +228,10 @@ class ACMEAuthority(AbstractACMEAuthority):
                     log('Challenge destruction failed: {}'.format(e), error=True)
 
         # check order status and retry once
-        code, order, _ = self._request_url(order_url)
+        code, order, _ = self._request_acme_url(order_url)
         if code < 400 and order.get('status') == 'pending':
             time.sleep(5)
-            code, order, _ = self._request_url(order_url)
+            code, order, _ = self._request_acme_url(order_url)
         if code >= 400:
             raise ValueError("Order is still not ready to be finalized: {0} {1}".format(code, order))
 
@@ -244,13 +242,13 @@ class ACMEAuthority(AbstractACMEAuthority):
         })
         while code < 400 and (finalize.get('status') == 'pending' or finalize.get('status') == 'processing'):
             time.sleep(5)
-            code, finalize, _ = self._request_url(order_url)
+            code, finalize, _ = self._request_acme_url(order_url)
         if code >= 400:
             raise ValueError("Error finalizing certificate: {0} {1}".format(code, finalize))
         log("Certificate ready!")
 
         # return certificate
-        code, certificate, _ = self._request_url(finalize['certificate'], raw_result=True)
+        code, certificate, _ = self._request_acme_url(finalize['certificate'], raw_result=True)
         if code >= 400:
             raise ValueError("Error downloading certificate chain: {0} {1}".format(code, certificate))
 
