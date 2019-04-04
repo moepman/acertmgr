@@ -29,14 +29,10 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param key the account key
     # @return the header for ACME
     def _prepare_header(self):
-        numbers = self.key.public_key().public_numbers()
+        alg, jwk = tools.get_key_alg_and_jwk(self.key)
         header = {
-            "alg": "RS256",
-            "jwk": {
-                "e": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.e)),
-                "kty": "RSA",
-                "n": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.n)),
-            },
+            "alg": alg,
+            "jwk": jwk,
         }
         return header
 

@@ -191,12 +191,27 @@ def convert_der_bytes_to_cert(data):
     return x509.load_der_x509_certificate(data, default_backend())
 
 
+# @brief determine key signing algorithm and jwk data
+# @return key algorithm, signature algorithm, key numbers as a dict
+def get_key_alg_and_jwk(key):
+    if isinstance(key, rsa.RSAPrivateKey):
+        # See https://tools.ietf.org/html/rfc7518#section-6.3
+        numbers = key.public_key().public_numbers()
+        return "RS256", {"kty": "RSA",
+                         "e": bytes_to_base64url(number_to_byte_format(numbers.e)),
+                         "n": bytes_to_base64url(number_to_byte_format(numbers.n))}
+    else:
+        raise ValueError("Unsupported key: {}".format(key))
+
+
 # @brief sign string with key
 def signature_of_str(key, string):
-    # @todo check why this padding is not working
-    # pad = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
-    pad = padding.PKCS1v15()
-    return key.sign(string.encode('utf8'), pad, hashes.SHA256())
+    alg, _ = get_key_alg_and_jwk(key)
+    data = string.encode('utf8')
+    if alg == 'RS256':
+        return key.sign(data, padding.PKCS1v15(), hashes.SHA256())
+    else:
+        raise ValueError("Unsupported signature algorithm: {}".format(alg))
 
 
 # @brief hash a string

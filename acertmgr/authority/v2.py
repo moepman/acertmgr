@@ -44,16 +44,10 @@ class ACMEAuthority(AbstractACMEAuthority):
             print("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory))
         self.nonce = None
 
-        # @todo: Add support for key-types other than RSA
-        numbers = key.public_key().public_numbers()
-        self.algorithm = "RS256"
+        self.algorithm, jwk = tools.get_key_alg_and_jwk(key)
         self.account_protected = {
             "alg": self.algorithm,
-            "jwk": {
-                "kty": "RSA",
-                "e": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.e)),
-                "n": tools.bytes_to_base64url(tools.number_to_byte_format(numbers.n)),
-            },
+            "jwk": jwk
         }
         self.account_id = None  # will be updated to correct value during account registration
 
