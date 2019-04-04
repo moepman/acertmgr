@@ -67,13 +67,14 @@ class ChallengeHandler(HTTPChallengeHandler):
         del self.challenges[token]
 
     def start_challenge(self, domain, thumbprint, token):
-        def _():
+        def _serve():
             self.server.serve_forever()
 
-        self.server_thread = threading.Thread(target=_)
+        self.server_thread = threading.Thread(target=_serve)
         self.server_thread.start()
         HTTPChallengeHandler.start_challenge(self, domain, thumbprint, token)
 
     def stop_challenge(self, domain, thumbprint, token):
-        self.server.shutdown()
-        self.server_thread.join()
+        if self.server_thread.is_alive():
+            self.server.shutdown()
+            self.server_thread.join()
