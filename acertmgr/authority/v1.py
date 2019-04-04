@@ -177,7 +177,8 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param reason (int) optional certificate revoke reason (see https://tools.ietf.org/html/rfc5280#section-5.3.1)
     def revoke_crt(self, crt, reason=None):
         header = self._prepare_header()
-        payload = {'certificate': tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(crt))}
+        payload = {"resource": "revoke-cert",
+                   "certificate": tools.bytes_to_base64url(tools.convert_cert_to_der_bytes(crt))}
         if reason:
             payload['reason'] = int(reason)
         code, result = self._send_signed(self.ca + "/acme/revoke-cert", header, payload)
