@@ -70,52 +70,41 @@ def cert_get(settings):
 # @param settings the domain's configuration options
 # @return the action to be executed after the certificate update
 def cert_put(settings):
-    # TODO error handling
-    ca_file = settings['ca_file']
-    crt_user = settings['user']
-    crt_group = settings['group']
-    crt_perm = settings['perm']
-    crt_path = settings['path']
-    crt_format = settings['format'].split(",")
-    crt_format = [str.strip(x) for x in crt_format]
-    crt_action = settings['action']
+    if 'path' not in settings:
+        raise ValueError('Deployment settings are missing required element: path')
+    if 'format' not in settings:
+        raise ValueError('Deployment settings are missing required element: format')
 
-    key_file = settings['key_file']
-    crt_final = settings['cert_file']
-
-    with io.open(crt_path, "w+") as crt_fd:
-        for fmt in crt_format:
+    with io.open(settings['path'], "w+") as crt_fd:
+        for fmt in [str.strip(x) for x in settings['format'].split(",")]:
             if fmt == "crt":
-                src_fd = io.open(crt_final, "r")
-                crt_fd.write(src_fd.read())
-                src_fd.close()
-            if fmt == "key":
-                src_fd = io.open(key_file, "r")
-                crt_fd.write(src_fd.read())
-                src_fd.close()
-            if fmt == "ca":
-                if not os.path.isfile(ca_file):
-                    raise FileNotFoundError("The CA certificate file (%s) is missing!" % ca_file)
-                src_fd = io.open(ca_file, "r")
-                crt_fd.write(src_fd.read())
-                src_fd.close()
+                with io.open(settings['cert_file'], "r") as src_fd:
+                    crt_fd.write(src_fd.read())
+            elif fmt == "key":
+                with io.open(settings['key_file'], "r") as src_fd:
+                    crt_fd.write(src_fd.read())
+            elif fmt == "ca":
+                with io.open(settings['ca_file'], "r") as src_fd:
+                    crt_fd.write(src_fd.read())
             else:
-                # TODO error handling
-                pass
+                log("Ignored unknown deployment format key: {}".format(fmt), warning=True)
 
-    # set owner and permissions
-    uid = pwd.getpwnam(crt_user).pw_uid
-    gid = grp.getgrnam(crt_group).gr_gid
-    try:
-        os.chown(crt_path, uid, gid)
-    except OSError:
-        log('Could not set certificate file ownership!', warning=True)
-    try:
-        os.chmod(crt_path, int(crt_perm, 8))
-    except OSError:
-        log('Could not set certificate file permissions!', warning=True)
+    # set owner and group
+    if 'user' in settings or 'group' in settings:
+        try:
+            uid = pwd.getpwnam(settings['user']).pw_uid if 'user' in settings else os.geteuid()
+            gid = grp.getgrnam(settings['group']).gr_gid if 'group' in settings else os.getegid()
+            os.chown(settings['path'], uid, gid)
+        except OSError as e:
+            log('Could not set certificate file ownership', e, warning=True)
+    # set permissions
+    if 'perm' in settings:
+        try:
+            os.chmod(settings['path'], int(settings['perm'], 8))
+        except OSError as e:
+            log('Could not set certificate file permissions', e, warning=True)
 
-    return crt_action
+    return settings['action']
 
 
 def cert_revoke(cert, configs, fallback_authority, reason=None):
@@ -169,15 +158,15 @@ def main():
         # deploy new certificates after all are renewed
         deployment_success = True
         for config in domainconfigs:
-            try:
-                for cfg in config['actions']:
+            for cfg in config['actions']:
+                try:
                     if not tools.target_is_current(cfg['path'], config['cert_file']):
-                        log("Updating '{}' due to newer version".format(cfg['path']))
                         actions.add(cert_put(cfg))
-            except Exception as e:
-                log("Certificate deployment failed", e, error=True)
-                exceptions.append(e)
-                deployment_success = False
+                        log("Updated '{}' due to newer version".format(cfg['path']))
+                except Exception as e:
+                    log("Certificate deployment to {} failed".format(cfg['path']), e, error=True)
+                    exceptions.append(e)
+                    deployment_success = False
 
         # run post-update actions
         for action in actions:

@@ -99,11 +99,11 @@ By default the directory (work_dir) containing the working data (csr,certificate
 | nsupdate_keyalgorithm   | **d**,g           | [dns.nsupdate] TSIG key algorithm to use for updates                                                                                         | HMAC-MD5.SIG-ALG.REG.INT             |
 | defaults:               | **g**             | Default deployment action settings used by all domains                                                                                       |                                      |
 | path                    | **d**             | (deployment) deploy certificate data to the given file                                                                                       |                                      |
-| user                    | **d**,g(defaults) | (deployment) change the user of the file deployed at path to this value                                                                      |                                      |
-| group                   | **d**,g(defaults) | (deployment) change the group of the file deployed at path to this value                                                                     |                                      |
-| perm                    | **d**,g(defaults) | (deployment) change the permissions of the file deployed at path to this value                                                               |                                      |
 | format                  | **d**,g(defaults) | (deployment) deploy one or more of the following data to the file at path: key,crt,ca                                                        |                                      |
-| action                  | **d**,g(defaults) | (deployment) run the following action after deployment is finished. This command will be run in a shell and therefore supports shell syntax. |                                      |
+| user                    | **d**,g(defaults) | (deployment) change the user of the file deployed at path to this value (optional, defaults to acertmgr current effective user)              |                                      |
+| group                   | **d**,g(defaults) | (deployment) change the group of the file deployed at path to this value (optional,defaults to acertmgr current effective group)             |                                      |
+| perm                    | **d**,g(defaults) | (deployment) change the permissions of the file deployed at path to this value (optional, CAUTION: uses system defaults for new files)       |                                      |
+| action                  | **d**,g(defaults) | (deployment) run the following action after deployment is finished. This command will be run in a shell and supports it's syntax. (optional) |                                      |
 
 Security
 --------
