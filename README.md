@@ -12,7 +12,7 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.5+ should work)
-  * cryptography (includes the optional idna module)
+  * cryptography>=0.6 (includes the optional idna module)
 
 Optional packages (required to use specified features)
 ------------------------------------------------------
@@ -21,7 +21,7 @@ Optional packages (required to use specified features)
   * dnspython: used by dns.* challenge handlers
   * idna: to allow automatic conversion of unicode domain names to their IDNA2008 counterparts
   * cryptography>=2.1: for creating certificates with the OCSP must-staple flag (cert_must_staple)
-
+  
 Setup
 -----
 

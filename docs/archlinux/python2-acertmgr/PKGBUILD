@@ -6,11 +6,11 @@ pkgdesc='An automated certificate manager using ACME/letsencrypt'
 arch=('any')
 url='https://github.com/moepman/acertmgr'
 license=('ISC')
-depends=('python2-cryptography')
+depends=('python2-cryptography>=0.6')
 optdepends=('python2-yaml: Support config files in YAML format'
             'python2-idna: Support conversion of unicode domains'
-	    'python2-dnspython: Support for dns challenge handlers'
-	    'python2-cryptography>=2.1: Support for the OCSP must-staple flag'
+            'python2-dnspython: Support for dns challenge handlers'
+            'python2-cryptography>=2.1: Support for the OCSP must-staple flag'
 	   )
 makedepends=('git')
 conflicts=('python-acertmgr')

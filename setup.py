@@ -65,7 +65,7 @@ setup(
         "License :: OSI Approved :: ISC License",
     ],
     install_requires=[
-        "cryptography",
+        "cryptography>=0.6",
     ],
     extras_require={
         "dns": [
@@ -79,6 +79,9 @@ setup(
         ],
         "ocsp-must-staple": [
             "cryptography>=2.1",
+        ],
+        "ed25519": [
+            "cryptography>=2.6",
         ],
     },
     entry_points={

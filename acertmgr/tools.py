@@ -17,8 +17,10 @@ import traceback
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 from cryptography.x509.oid import NameOID, ExtensionOID
+from cryptography.utils import int_to_bytes
 
 try:
     from urllib.request import urlopen, Request  # Python 3
@@ -241,6 +243,24 @@ def get_key_alg_and_jwk(key):
         return "RS256", {"kty": "RSA",
                          "e": bytes_to_base64url(number_to_byte_format(numbers.e)),
                          "n": bytes_to_base64url(number_to_byte_format(numbers.n))}
+    elif isinstance(key, ec.EllipticCurvePrivateKey):
+        # See https://tools.ietf.org/html/rfc7518#section-6.2
+        numbers = key.public_key().public_numbers()
+        if isinstance(numbers.curve, ec.SECP256R1):
+            alg = 'ES256'
+            crv = 'P-256'
+        elif isinstance(numbers.curve, ec.SECP384R1):
+            alg = 'ES384'
+            crv = 'P-384'
+        elif isinstance(numbers.curve, ec.SECP521R1):
+            alg = 'ES512'
+            crv = 'P-521'
+        else:
+            raise ValueError("Unsupported EC curve in key: {}".format(key))
+        full_octets = (int(crv[2:]) + 7) // 8
+        return alg, {"kty": "EC", "crv": crv,
+                     "x": bytes_to_base64url(int_to_bytes(numbers.x, full_octets)),
+                     "y": bytes_to_base64url(int_to_bytes(numbers.y, full_octets))}
     else:
         raise ValueError("Unsupported key: {}".format(key))
 
@@ -251,6 +271,19 @@ def signature_of_str(key, string):
     data = string.encode('utf8')
     if alg == 'RS256':
         return key.sign(data, padding.PKCS1v15(), hashes.SHA256())
+    elif alg.startswith('ES'):
+        full_octets = (int(alg[2:]) + 7) // 8
+        if alg == 'ES256':
+            der_sig = key.sign(data, ec.ECDSA(hashes.SHA256()))
+        elif alg == 'ES384':
+            der_sig = key.sign(data, ec.ECDSA(hashes.SHA384()))
+        elif alg == 'ES512':
+            der_sig = key.sign(data, ec.ECDSA(hashes.SHA512()))
+        else:
+            raise ValueError("Unsupported EC signature algorithm: {}".format(alg))
+        # convert DER signature to RAW format (https://tools.ietf.org/html/rfc7518#section-3.4)
+        r, s = decode_dss_signature(der_sig)
+        return int_to_bytes(r, full_octets) + int_to_bytes(s, full_octets)
     else:
         raise ValueError("Unsupported signature algorithm: {}".format(alg))
 
