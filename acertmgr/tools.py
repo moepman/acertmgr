@@ -14,7 +14,6 @@ import os
 import sys
 import traceback
 
-import six
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
@@ -92,14 +91,11 @@ def is_cert_valid(cert, ttl_days):
 # @param must_staple whether or not the certificate should include the OCSP must-staple flag
 # @return the CSR in pyopenssl format
 def new_cert_request(names, key, must_staple=False):
-    # TODO: There has to be a better way to ensure correct text type (why typecheck, cryptography?)
-    primary_name = x509.Name([x509.NameAttribute(
-        NameOID.COMMON_NAME,
-        names[0] if isinstance(names[0], six.text_type) else names[0].decode('utf-8'))
-    ])
-    all_names = x509.SubjectAlternativeName([x509.DNSName(
-        name if isinstance(name, six.text_type) else name.decode('utf-8')
-    ) for name in names])
+    primary_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,
+                                                 names[0].decode('utf-8') if getattr(names[0], 'decode', None) else
+                                                 names[0])])
+    all_names = x509.SubjectAlternativeName(
+        [x509.DNSName(name.decode('utf-8') if getattr(name, 'decode', None) else name) for name in names])
     req = x509.CertificateSigningRequestBuilder()
     req = req.subject_name(primary_name)
     req = req.add_extension(all_names, critical=False)

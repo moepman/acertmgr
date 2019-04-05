@@ -66,7 +66,6 @@ setup(
     ],
     install_requires=[
         "cryptography",
-        "six",
     ],
     extras_require={
         "dns": [
