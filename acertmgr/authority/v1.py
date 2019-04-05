@@ -21,6 +21,8 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param config Configuration data
     # @param key Account key data
     def __init__(self, config, key):
+        log('You currently use ACMEv1 which is deprecated, consider using ACMEv2 (RFC8555) if at all possible.',
+            warning=True)
         AbstractACMEAuthority.__init__(self, config, key)
         self.registered_account = False
         self.ca = config['authority']
