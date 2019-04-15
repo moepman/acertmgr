@@ -7,7 +7,6 @@
 # available under the ISC license, see LICENSE
 
 import base64
-import binascii
 import datetime
 import io
 import os
@@ -19,8 +18,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
-from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.utils import int_to_bytes
+from cryptography.x509.oid import NameOID, ExtensionOID
 
 try:
     from urllib.request import urlopen, Request  # Python 3
@@ -241,8 +240,8 @@ def get_key_alg_and_jwk(key):
         # See https://tools.ietf.org/html/rfc7518#section-6.3
         numbers = key.public_key().public_numbers()
         return "RS256", {"kty": "RSA",
-                         "e": bytes_to_base64url(number_to_byte_format(numbers.e)),
-                         "n": bytes_to_base64url(number_to_byte_format(numbers.n))}
+                         "e": bytes_to_base64url(int_to_bytes(numbers.e)),
+                         "n": bytes_to_base64url(int_to_bytes(numbers.n))}
     elif isinstance(key, ec.EllipticCurvePrivateKey):
         # See https://tools.ietf.org/html/rfc7518#section-6.2
         numbers = key.public_key().public_numbers()
@@ -300,15 +299,6 @@ def hash_of_str(string):
 # @return the encoded string
 def bytes_to_base64url(b):
     return base64.urlsafe_b64encode(b).decode('utf8').replace("=", "")
-
-
-# @brief convert numbers to byte-string
-# @param num number to convert
-# @return byte-string containing the number
-def number_to_byte_format(num):
-    n = format(num, 'x')
-    n = "0{0}".format(n) if len(n) % 2 else n
-    return binascii.unhexlify(n)
 
 
 # @brief check whether existing target file is still valid or source crt has been updated
