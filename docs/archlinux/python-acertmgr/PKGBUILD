@@ -11,6 +11,7 @@ optdepends=('python-yaml: Support config files in YAML format'
             'python-idna: Support conversion of unicode domains'
             'python-dnspython: Support for dns challenge handlers'
             'python-cryptography>=2.1: Support for the OCSP must-staple flag'
+            'python-cryptography>=2.6: Support for Ed25519 key support'
 	   )
 makedepends=('git')
 conflicts=('python-acertmgr')

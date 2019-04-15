@@ -22,6 +22,11 @@ from cryptography.utils import int_to_bytes
 from cryptography.x509.oid import NameOID, ExtensionOID
 
 try:
+    from cryptography.hazmat.primitives.asymmetric import ed25519, ed448
+except ImportError:
+    pass
+
+try:
     from urllib.request import urlopen, Request  # Python 3
 except ImportError:
     from urllib2 import urlopen, Request  # Python 2
@@ -260,6 +265,19 @@ def get_key_alg_and_jwk(key):
         return alg, {"kty": "EC", "crv": crv,
                      "x": bytes_to_base64url(int_to_bytes(numbers.x, full_octets)),
                      "y": bytes_to_base64url(int_to_bytes(numbers.y, full_octets))}
+    elif "cryptography.hazmat.primitives.asymmetric.ed25519" in sys.modules and isinstance(key,
+                                                                                           ed25519.Ed25519PrivateKey):
+        # See https://tools.ietf.org/html/rfc8037#appendix-A.2
+        return "EdDSA", {"kty": "OKP", "crv": "Ed25519",
+                         "x": bytes_to_base64url(key.public_key().public_bytes(encoding=serialization.Encoding.Raw,
+                                                                               format=serialization.PublicFormat.Raw)
+                                                 )}
+    elif "cryptography.hazmat.primitives.asymmetric.ed448" in sys.modules and isinstance(key,
+                                                                                         ed448.Ed448PrivateKey):
+        return "EdDSA", {"kty": "OKP", "crv": "Ed448",
+                         "x": bytes_to_base64url(key.public_key().public_bytes(encoding=serialization.Encoding.Raw,
+                                                                               format=serialization.PublicFormat.Raw)
+                                                 )}
     else:
         raise ValueError("Unsupported key: {}".format(key))
 
@@ -283,6 +301,8 @@ def signature_of_str(key, string):
         # convert DER signature to RAW format (https://tools.ietf.org/html/rfc7518#section-3.4)
         r, s = decode_dss_signature(der_sig)
         return int_to_bytes(r, full_octets) + int_to_bytes(s, full_octets)
+    elif alg == 'EdDSA':
+        return key.sign(data)
     else:
         raise ValueError("Unsupported signature algorithm: {}".format(alg))
 

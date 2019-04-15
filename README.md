@@ -21,7 +21,8 @@ Optional packages (required to use specified features)
   * dnspython: used by dns.* challenge handlers
   * idna: to allow automatic conversion of unicode domain names to their IDNA2008 counterparts
   * cryptography>=2.1: for creating certificates with the OCSP must-staple flag (cert_must_staple)
-  
+  * cryptography>=2.6: for usage of (pre-created) Ed25519 keys
+
 Setup
 -----
 
