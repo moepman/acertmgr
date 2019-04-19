@@ -116,24 +116,47 @@ def new_cert_request(names, key, must_staple=False):
 
 # @brief generate a new account key
 # @param path path where the new key file should be written in PEM format (optional)
-def new_account_key(path=None, key_size=4096):
-    return new_ssl_key(path, key_size)
+def new_account_key(path=None, key_algo=None, key_size=None):
+    return new_ssl_key(path, key_algo, key_size)
 
 
 # @brief generate a new ssl key
 # @param path path where the new key file should be written in PEM format (optional)
-def new_ssl_key(path=None, key_size=4096):
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=key_size,
-        backend=default_backend()
-    )
-    pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
-    )
+def new_ssl_key(path=None, key_algo=None, key_size=None):
+    if not key_algo or key_algo.lower() == 'rsa':
+        if not key_size:
+            key_size = 4096
+        key_format = serialization.PrivateFormat.TraditionalOpenSSL
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=key_size,
+            backend=default_backend()
+        )
+    elif key_algo.lower() == 'ec':
+        if not key_size or key_size == 256:
+            key_curve = ec.SECP256R1
+        elif key_size == 384:
+            key_curve = ec.SECP384R1
+        elif key_size == 521:
+            key_curve = ec.SECP521R1
+        else:
+            raise ValueError("Unsupported EC curve size parameter: {}".format(key_size))
+        key_format = serialization.PrivateFormat.PKCS8
+        private_key = ec.generate_private_key(curve=key_curve, backend=default_backend())
+    elif key_algo.lower() == 'ed25519' and "cryptography.hazmat.primitives.asymmetric.ed25519":
+        key_format = serialization.PrivateFormat.PKCS8
+        private_key = ed25519.Ed25519PrivateKey.generate()
+    elif key_algo.lower() == 'ed448' and "cryptography.hazmat.primitives.asymmetric.ed448":
+        key_format = serialization.PrivateFormat.PKCS8
+        private_key = ed448.Ed448PrivateKey.generate()
+    else:
+        raise ValueError("Unsupported key algorithm: {}".format(key_algo))
     if path is not None:
+        pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=key_format,
+        encryption_algorithm=serialization.NoEncryption(),
+        )
         with io.open(path, 'wb') as pem_out:
             pem_out.write(pem)
         try:

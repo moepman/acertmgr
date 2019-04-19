@@ -35,12 +35,11 @@ def cert_get(settings):
 
     # create ssl key
     key_file = settings['key_file']
-    key_length = settings['key_length']
     if os.path.isfile(key_file):
         key = tools.read_pem_file(key_file, key=True)
     else:
-        log("SSL key not found at '{0}'. Creating {1} bit key.".format(key_file, key_length))
-        key = tools.new_ssl_key(key_file, key_length)
+        log("SSL key not found at '{0}'. Creating key.".format(key_file))
+        key = tools.new_ssl_key(key_file, settings['key_algorithm'], settings['key_length'])
 
     # create ssl csr
     csr_file = settings['csr_file']

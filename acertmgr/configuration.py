@@ -32,7 +32,6 @@ LEGACY_AUTHORITY_TOS_AGREEMENT = "true"
 # Configuration defaults to use if not specified otherwise
 DEFAULT_CONF_FILE = "/etc/acertmgr/acertmgr.conf"
 DEFAULT_CONF_DIR = "/etc/acertmgr"
-DEFAULT_KEY_LENGTH = 4096  # bits
 DEFAULT_TTL = 30  # days
 DEFAULT_API = "v2"
 DEFAULT_AUTHORITY = "https://acme-v02.api.letsencrypt.org"
@@ -105,6 +104,14 @@ def parse_authority(localconfig, globalconfig, runtimeconfig):
     # - Account key path
     update_config_value(authority, 'account_key', localconfig, globalconfig,
                         os.path.join(runtimeconfig['work_dir'], "account.key"))
+
+    # - Account key algorithm (if key has to be (re-)generated)
+    update_config_value(authority, 'account_key_algorithm', localconfig, globalconfig, None)
+
+    # - Account key length (if key has to be (re-)generated, converted to int)
+    update_config_value(authority, 'account_key_length', localconfig, globalconfig, None)
+    authority['account_key_length'] = int(authority['account_key_length']) if authority['account_key_length'] else None
+
     return authority
 
 
@@ -162,9 +169,12 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
                         globalconfig.get('server_key',
                                          os.path.join(config['cert_dir'], "{}.key".format(config['id']))))
 
+    # SSL key algorithm (if key has to be (re-)generated)
+    update_config_value(config, 'key_algorithm', localconfig, globalconfig, None)
+
     # SSL key length (if key has to be (re-)generated, converted to int)
-    update_config_value(config, 'key_length', localconfig, globalconfig, DEFAULT_KEY_LENGTH)
-    config['key_length'] = int(config['key_length'])
+    update_config_value(config, 'key_length', localconfig, globalconfig, None)
+    config['key_length'] = int(config['key_length']) if config['key_length'] else None
 
     # SSL CA location / use static
     update_config_value(config, 'ca_file', localconfig, globalconfig,

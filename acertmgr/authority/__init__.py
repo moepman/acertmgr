@@ -28,7 +28,7 @@ def authority(settings):
             acc_key = tools.read_pem_file(acc_file, key=True)
         else:
             log("Account key not found at '{0}'. Creating key.".format(acc_file))
-            acc_key = tools.new_account_key(acc_file)
+            acc_key = tools.new_account_key(acc_file, settings['account_key_algorithm'], settings['account_key_size'])
 
         authority_module = importlib.import_module("acertmgr.authority.{0}".format(settings["api"]))
         authority_class = getattr(authority_module, "ACMEAuthority")
