@@ -12,14 +12,8 @@ import hashlib
 import io
 import json
 import os
-import sys
 
-from acertmgr.tools import log
-
-try:
-    import idna
-except ImportError:
-    pass
+from acertmgr.tools import log, idna_convert
 
 # Backward compatiblity for older versions/installations of acertmgr
 LEGACY_WORK_DIR = "/etc/acme"
@@ -61,28 +55,6 @@ def update_config_value(config, name, localconfig, globalconfig, default):
         config[name] = values[0]
     else:
         config[name] = globalconfig.get(name, default)
-
-
-# @brief convert domain list to idna representation (if applicable
-def idna_convert(domainlist):
-    if 'idna' in sys.modules and any(ord(c) >= 128 for c in ''.join(domainlist)):
-        domaintranslation = list()
-        for domain in domainlist:
-            if any(ord(c) >= 128 for c in domain):
-                # Translate IDNA domain name from a unicode domain (handle wildcards separately)
-                if domain.startswith('*.'):
-                    idna_domain = "*.{}".format(idna.encode(domain[2:]).decode('utf-8'))
-                else:
-                    idna_domain = idna.encode(domain).decode('utf-8')
-                result = idna_domain, domain
-            else:
-                result = domain, domain
-            domaintranslation.append(result)
-        return domaintranslation
-    else:
-        if 'idna' not in sys.modules:
-            log("Unicode domain(s) found but IDNA names could not be translated due to missing idna module", error=True)
-        return list()
 
 
 # @brief parse authority from config

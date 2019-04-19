@@ -153,9 +153,9 @@ def new_ssl_key(path=None, key_algo=None, key_size=None):
         raise ValueError("Unsupported key algorithm: {}".format(key_algo))
     if path is not None:
         pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=key_format,
-        encryption_algorithm=serialization.NoEncryption(),
+            encoding=serialization.Encoding.PEM,
+            format=key_format,
+            encryption_algorithm=serialization.NoEncryption(),
         )
         with io.open(path, 'wb') as pem_out:
             pem_out.write(pem)
@@ -226,7 +226,7 @@ def get_cert_domains(cert):
         for d in san_cert.value:
             domains.add(d.value)
     # Convert IDNA domain to correct representation and return the list
-    return [x.encode('idna').decode('ascii') if any(ord(c) >= 128 for c in x) else x for x in domains]
+    return [x for x, _ in idna_convert(domains)]
 
 
 # @brief determine certificate cn
@@ -354,3 +354,25 @@ def target_is_current(target, file):
     target_date = os.path.getmtime(target)
     crt_date = os.path.getmtime(file)
     return target_date >= crt_date
+
+
+# @brief convert domain list to idna representation (if applicable
+def idna_convert(domainlist):
+    if 'idna' in sys.modules and any(ord(c) >= 128 for c in ''.join(domainlist)):
+        domaintranslation = list()
+        for domain in domainlist:
+            if any(ord(c) >= 128 for c in domain):
+                # Translate IDNA domain name from a unicode domain (handle wildcards separately)
+                if domain.startswith('*.'):
+                    idna_domain = "*.{}".format(domain[2:].encode('idna').decode('ascii'))
+                else:
+                    idna_domain = domain.encode('idna').decode('ascii')
+                result = idna_domain, domain
+            else:
+                result = domain, domain
+            domaintranslation.append(result)
+        return domaintranslation
+    else:
+        if 'idna' not in sys.modules:
+            log("Unicode domain(s) found but IDNA names could not be translated due to missing idna module", error=True)
+        return [(x, x) for x in domainlist]
