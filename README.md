@@ -12,16 +12,16 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.5+ should work)
-  * cryptography>=0.6 (includes the optional idna module)
+  * cryptography>=0.6 (usually includes the optional idna module)
 
-Optional packages (required to use specified features)
+Optional requirements (to use specified features)
 ------------------------------------------------------
 
   * PyYAML: to parse YAML-formatted configuration files
   * dnspython: used by dns.* challenge handlers
   * idna: to allow automatic conversion of unicode domain names to their IDNA2008 counterparts
   * cryptography>=2.1: for creating certificates with the OCSP must-staple flag (cert_must_staple)
-  * cryptography>=2.6: for usage of (pre-created) Ed25519 keys
+  * cryptography>=2.6: for usage of Ed25519/Ed448 keys
 
 Setup
 -----
@@ -96,7 +96,7 @@ By default the directory (work_dir) containing the working data (csr,certificate
 | dns_verify_all_ns       | **d**,g           | [dns.*] Verify DNS challenges by querying all known zone NS servers (resolved by zone master from SOA or dns_verify_server)                  | false                                |
 | dns_verify_server       | **d**,g           | [dns.*] Verify DNS challenges by querying this DNS server unless 'dns_verify_all_ns' is enabled, then use to determine zone NS               |                                      |
 | nsupdate_server         | **d**,g           | [dns.nsupdate] DNS Server to delegate the update to                                                                                          | {determine from zone SOA}            |
-| nsupdate_verify         | **d**,g           | [dns.*] Verify TXT record on the update server upon creation                                                                                 | true                                 |
+| nsupdate_verify         | **d**,g           | [dns.nsupdate] Verify TXT record on the update server upon creation                                                                          | true                                 |
 | nsupdate_keyfile        | **d**,g           | [dns.nsupdate] Bind-formatted TSIG key file to use for updates (may be used instead of nsupdate_key*)                                        |                                      |
 | nsupdate_keyname        | **d**,g           | [dns.nsupdate] TSIG key name to use for updates                                                                                              |                                      |
 | nsupdate_keyvalue       | **d**,g           | [dns.nsupdate] TSIG key value to use for updates                                                                                             |                                      |
@@ -116,3 +116,8 @@ Please keep the following in mind when using this software:
 
   * DO read the source code, since it (usually) will be run as root
   * Make sure that your configuration files are NOT writable by other users - arbitrary commands can be executed after updating certificates
+  * Try to run this program non-privileged if possible. This requires you to:
+     * Create a dedicated user for acertmgr (e.g. acertmgr)
+     * Run a acertmgr as that user (add acertmgr to that users cron!)
+     * Access rights to read/write all files configured with the created user
+     * Run any programs/scripts defined on cert update as the created user (might need work-arounds with sudo or wrapper scripts)
