@@ -21,7 +21,7 @@ LEGACY_CONF_FILE = os.path.join(LEGACY_WORK_DIR, "acme.conf")
 LEGACY_CONF_DIR = os.path.join(LEGACY_WORK_DIR, "domains.d")
 LEGACY_API = "v1"
 LEGACY_AUTHORITY = "https://acme-v01.api.letsencrypt.org"
-LEGACY_AUTHORITY_TOS_AGREEMENT = "true"
+LEGACY_AUTHORITY_TOS_AGREEMENT = "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
 
 # Configuration defaults to use if not specified otherwise
 DEFAULT_CONF_FILE = "/etc/acertmgr/acertmgr.conf"
