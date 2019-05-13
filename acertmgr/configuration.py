@@ -13,15 +13,7 @@ import io
 import json
 import os
 
-from acertmgr.tools import log, idna_convert
-
-# Backward compatiblity for older versions/installations of acertmgr
-LEGACY_WORK_DIR = "/etc/acme"
-LEGACY_CONF_FILE = os.path.join(LEGACY_WORK_DIR, "acme.conf")
-LEGACY_CONF_DIR = os.path.join(LEGACY_WORK_DIR, "domains.d")
-LEGACY_API = "v1"
-LEGACY_AUTHORITY = "https://acme-v01.api.letsencrypt.org"
-LEGACY_AUTHORITY_TOS_AGREEMENT = "https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf"
+from acertmgr.tools import idna_convert
 
 # Configuration defaults to use if not specified otherwise
 DEFAULT_CONF_FILE = "/etc/acertmgr/acertmgr.conf"
@@ -128,18 +120,12 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
                         os.path.join(config['cert_dir'], "{}.csr".format(config['id'])))
 
     # SSL cert location (with compatibility to older versions)
-    if 'server_cert' in globalconfig:
-        log("Legacy configuration directive 'server_cert' used. Support will be removed in 1.0", warning=True)
     update_config_value(config, 'cert_file', localconfig, globalconfig,
-                        globalconfig.get('server_cert',
-                                         os.path.join(config['cert_dir'], "{}.crt".format(config['id']))))
+                        os.path.join(config['cert_dir'], "{}.crt".format(config['id'])))
 
     # SSL key location (with compatibility to older versions)
-    if 'server_key' in globalconfig:
-        log("Legacy configuration directive 'server_key' used. Support will be removed in 1.0", warning=True)
     update_config_value(config, 'key_file', localconfig, globalconfig,
-                        globalconfig.get('server_key',
-                                         os.path.join(config['cert_dir'], "{}.key".format(config['id']))))
+                        os.path.join(config['cert_dir'], "{}.key".format(config['id'])))
 
     # SSL key algorithm (if key has to be (re-)generated)
     update_config_value(config, 'key_algorithm', localconfig, globalconfig, None)
@@ -150,14 +136,8 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
 
     # SSL CA location / use static
     update_config_value(config, 'ca_file', localconfig, globalconfig,
-                        globalconfig.get('server_ca', config['defaults'].get('server_ca',
-                                                                             os.path.join(config['cert_dir'],
-                                                                                          "{}.ca".format(
-                                                                                              config['id'])))))
+                        os.path.join(config['cert_dir'], "{}.ca".format(config['id'])))
     update_config_value(config, 'ca_static', localconfig, globalconfig, "false")
-    if 'server_ca' in globalconfig or 'server_ca' in config['defaults']:
-        config['ca_static'] = "true"
-        log("Legacy configuration directive 'server_ca' used. Support removed in 1.0", warning=True)
 
     # Domain action configuration
     config['actions'] = list()
@@ -211,19 +191,12 @@ def load():
     # Determine global configuration file
     if args.config_file:
         global_config_file = args.config_file
-    elif os.path.isfile(LEGACY_CONF_FILE):
-        log("Legacy config file '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_FILE, DEFAULT_CONF_FILE),
-            warning=True)
-        global_config_file = LEGACY_CONF_FILE
     else:
         global_config_file = DEFAULT_CONF_FILE
 
     # Determine domain configuration directory
     if args.config_dir:
         domain_config_dir = args.config_dir
-    elif os.path.isdir(LEGACY_CONF_DIR):
-        log("Legacy config dir '{}' used. Move to '{}' for 1.0".format(LEGACY_CONF_DIR, DEFAULT_CONF_DIR), warning=True)
-        domain_config_dir = LEGACY_CONF_DIR
     else:
         domain_config_dir = DEFAULT_CONF_DIR
 
@@ -231,9 +204,6 @@ def load():
     # - work_dir
     if args.work_dir:
         runtimeconfig['work_dir'] = args.work_dir
-    elif os.path.isdir(LEGACY_WORK_DIR) and domain_config_dir == LEGACY_CONF_DIR:
-        log("Legacy work dir '{}' used. Move to config-dir for 1.0".format(LEGACY_WORK_DIR), warning=True)
-        runtimeconfig['work_dir'] = LEGACY_WORK_DIR
     else:
         runtimeconfig['work_dir'] = domain_config_dir
     #  create work_dir if it does not exist yet
@@ -243,9 +213,6 @@ def load():
     # - authority_tos_agreement
     if args.authority_tos_agreement:
         runtimeconfig['authority_tos_agreement'] = args.authority_tos_agreement
-    elif global_config_file == LEGACY_CONF_FILE:
-        # Legacy global config file assumes ToS are agreed
-        runtimeconfig['authority_tos_agreement'] = LEGACY_AUTHORITY_TOS_AGREEMENT
     else:
         runtimeconfig['authority_tos_agreement'] = None
 
@@ -273,11 +240,6 @@ def load():
                 import yaml
                 config_fd.seek(0)
                 globalconfig = yaml.safe_load(config_fd)
-    if global_config_file == LEGACY_CONF_FILE:
-        if 'api' not in globalconfig:
-            globalconfig['api'] = LEGACY_API
-        if 'authority' not in globalconfig:
-            globalconfig['authority'] = LEGACY_AUTHORITY
 
     # Domain configuration(s): Load from file(s)
     domainconfigs = list()
