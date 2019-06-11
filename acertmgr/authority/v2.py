@@ -97,8 +97,11 @@ class ACMEAuthority(AbstractACMEAuthority):
         # Request a new nonce if there is none in cache
         if not self.nonce:
             self._request_url(self.directory['newNonce'])
-
+        # Set request nonce to current cache value
         protected["nonce"] = self.nonce
+        # Reset nonce cache as we are using it's current value
+        self.nonce = None
+
         protected["url"] = url
         if self.algorithm:
             protected["alg"] = self.algorithm
