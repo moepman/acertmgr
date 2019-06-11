@@ -208,11 +208,11 @@ class ACMEAuthority(AbstractACMEAuthority):
                         time.sleep(5)
                         code, challenge_status, _ = self._request_acme_url(authorization['_challenge']['url'])
 
-                    if challenge_status.get('status') == "valid":
+                    if code < 400 and challenge_status.get('status') == "valid":
                         log("{0} verified".format(authorization['_domain']))
                     else:
-                        raise ValueError("{0} challenge did not pass: {1}".format(
-                            authorization['_domain'], challenge_status))
+                        raise ValueError("{0} challenge did not pass ({1}): {2}".format(
+                            authorization['_domain'], code, challenge_status))
                 finally:
                     challenge_handlers[authorization['_domain']].stop_challenge(authorization['identifier']['value'],
                                                                                 account_thumbprint,
