@@ -373,6 +373,6 @@ def idna_convert(domainlist):
             domaintranslation.append(result)
         return domaintranslation
     else:
-        if 'idna' not in sys.modules:
+        if any(ord(c) >= 128 for c in ''.join(domainlist)) and 'idna' not in sys.modules:
             log("Unicode domain(s) found but IDNA names could not be translated due to missing idna module", error=True)
         return [(x, x) for x in domainlist]
