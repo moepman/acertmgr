@@ -14,6 +14,9 @@ from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
 from acertmgr.tools import log
 
+# Maximum age for nonce values (Boulder invalidates them after some time, so we use a low value of 2 minutes here)
+MAX_NONCE_AGE = 120
+
 
 class ACMEAuthority(AbstractACMEAuthority):
     # @brief Init class with config
@@ -45,6 +48,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             log("API directory retrieval failed ({}). Guessed necessary values: {}".format(code, self.directory),
                 warning=True)
         self.nonce = None
+        self.nonce_time = 0
 
         self.algorithm, jwk = tools.get_key_alg_and_jwk(key)
         self.account_protected = {
@@ -71,6 +75,7 @@ class ACMEAuthority(AbstractACMEAuthority):
         # Store next Replay-Nonce if it is in the header
         if 'Replay-Nonce' in resp.headers:
             self.nonce = resp.headers['Replay-Nonce']
+            self.nonce_time = time.time()
 
         body = resp.read()
         if getattr(body, 'decode', None):
@@ -95,7 +100,7 @@ class ACMEAuthority(AbstractACMEAuthority):
             payload64 = ""  # for POST-as-GET
 
         # Request a new nonce if there is none in cache
-        if not self.nonce:
+        if not self.nonce or time.time() > self.nonce_time + MAX_NONCE_AGE:
             self._request_url(self.directory['newNonce'])
         # Set request nonce to current cache value
         protected["nonce"] = self.nonce
