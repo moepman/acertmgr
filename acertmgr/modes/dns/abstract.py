@@ -20,6 +20,7 @@ from acertmgr import tools
 from acertmgr.modes.abstract import AbstractChallengeHandler
 from acertmgr.tools import log
 
+QUERY_TIMEOUT = 60  # seconds are the maximum for any query (otherwise the DNS server will be considered dead)
 REGEX_IP4 = r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$'
 REGEX_IP6 = r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}' \
             r':|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}' \
@@ -66,7 +67,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
             nameserver = DNSChallengeHandler._lookup_ip(zonemaster)
 
         request = dns.message.make_query(zone, dns.rdatatype.NS)
-        response = dns.query.udp(request, nameserver)
+        response = dns.query.udp(request, nameserver, timeout=QUERY_TIMEOUT)
         retval = set()
         if response.rcode() == dns.rcode.NOERROR:
             for answer in response.answer:
@@ -95,7 +96,7 @@ class DNSChallengeHandler(AbstractChallengeHandler):
             request = dns.message.make_query(domain, dns.rdatatype.SOA)
             for nameserver in nameservers:
                 try:
-                    response = dns.query.udp(request, nameserver)
+                    response = dns.query.udp(request, nameserver, timeout=QUERY_TIMEOUT)
                     if response.rcode() == dns.rcode.NOERROR:
                         for answer in response.answer:
                             for item in answer:
@@ -121,9 +122,9 @@ class DNSChallengeHandler(AbstractChallengeHandler):
         try:
             request = dns.message.make_query(domain, dns.rdatatype.TXT)
             if use_tcp:
-                response = dns.query.tcp(request, nameserverip)
+                response = dns.query.tcp(request, nameserverip, timeout=QUERY_TIMEOUT)
             else:
-                response = dns.query.udp(request, nameserverip)
+                response = dns.query.udp(request, nameserverip, timeout=QUERY_TIMEOUT)
             for rrset in response.answer:
                 for answer in rrset:
                     if answer.to_text().strip('"') == txtvalue:

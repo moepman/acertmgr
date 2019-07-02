@@ -12,7 +12,7 @@ import dns.query
 import dns.tsigkeyring
 import dns.update
 
-from acertmgr.modes.dns.abstract import DNSChallengeHandler
+from acertmgr.modes.dns.abstract import DNSChallengeHandler, QUERY_TIMEOUT
 from acertmgr.tools import log
 
 DEFAULT_KEY_ALGORITHM = "HMAC-MD5.SIG-ALG.REG.INT"
@@ -72,14 +72,14 @@ class ChallengeHandler(DNSChallengeHandler):
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.add(domain, self.dns_ttl, dns.rdatatype.TXT, txtvalue)
         log('Adding \'{} {} IN TXT "{}"\' to {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
-        dns.query.tcp(update, nameserverip)
+        dns.query.tcp(update, nameserverip, timeout=QUERY_TIMEOUT)
 
     def remove_dns_record(self, domain, txtvalue):
         zone, nameserverip = self._determine_zone_and_nameserverip(domain)
         update = dns.update.Update(zone, keyring=self.keyring, keyalgorithm=self.keyalgorithm)
         update.delete(domain, dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.TXT, txtvalue))
         log('Deleting \'{} {} IN TXT "{}"\' from {}'.format(domain, self.dns_ttl, txtvalue, nameserverip))
-        dns.query.tcp(update, nameserverip)
+        dns.query.tcp(update, nameserverip, timeout=QUERY_TIMEOUT)
 
     def verify_dns_record(self, domain, txtvalue):
         if self.nsupdate_verify and not self.dns_verify_all_ns and not self.nsupdate_verified:
