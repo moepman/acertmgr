@@ -1,0 +1,27 @@
+image: ubuntu1804
+
+install:
+- sudo apt -o Dpkg::Progress-Fancy="0" install -y python3 python3-stdeb python3-setuptools debhelper fakeroot
+
+before_test:
+- sed "s/=determine_version()/='$(python3 setup.py --version)'/gi" -i setup.py
+- sed "s@('readme'@('share/doc/python3-acertmgr'@" -i setup.py 
+
+test_script:
+- python3 setup.py --command-packages=stdeb.command bdist_deb 
+
+after_test:
+- mv -v deb_dist/python3-acertmgr*deb .
+
+artifacts:
+- path: "python3-acertmgr*deb"
+  name: python3-acertmgr
+
+build: off
+
+deploy:
+  provider: Environment
+  name: github-acertmgr
+  on:
+    branch: master                 # release from master branch only
+    APPVEYOR_REPO_TAG: true        # deploy on tag push only
