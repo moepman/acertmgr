@@ -58,11 +58,11 @@ setup(
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
         "Environment :: Console",
         "Topic :: Security :: Cryptography",
-        "License :: OSI Approved :: ISC License",
+        "License :: OSI Approved :: ISC License (ISCL)",
     ],
     install_requires=[
         "cryptography>=0.6",
