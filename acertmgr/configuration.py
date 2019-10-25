@@ -16,8 +16,8 @@ import os
 from acertmgr.tools import idna_convert
 
 # Configuration defaults to use if not specified otherwise
-DEFAULT_CONF_FILE = "/etc/acertmgr/acertmgr.conf"
 DEFAULT_CONF_DIR = "/etc/acertmgr"
+DEFAULT_CONF_FILENAME = "acertmgr.conf"
 DEFAULT_TTL = 30  # days
 DEFAULT_API = "v2"
 DEFAULT_AUTHORITY = "https://acme-v02.api.letsencrypt.org"
@@ -173,11 +173,11 @@ def load():
     runtimeconfig = dict()
     parser = argparse.ArgumentParser(description="acertmgr - Automated Certificate Manager using ACME/Let's Encrypt")
     parser.add_argument("-c", "--config-file", nargs="?",
-                        help="global configuration file (default='{}')".format(DEFAULT_CONF_FILE))
+                        help="global configuration file (default='$config_dir/{}')".format(DEFAULT_CONF_FILENAME))
     parser.add_argument("-d", "--config-dir", nargs="?",
                         help="domain configuration directory (default='{}')".format(DEFAULT_CONF_DIR))
     parser.add_argument("-w", "--work-dir", nargs="?",
-                        help="persistent work data directory (default=config_dir)")
+                        help="persistent work data directory (default='$config_dir')")
     parser.add_argument("--authority-tos-agreement", "--tos-agreement", "--tos", nargs="?",
                         help="Agree to the authorities Terms of Service (value required depends on authority)")
     parser.add_argument("--force-renew", "--renew-now", nargs="?",
@@ -188,17 +188,17 @@ def load():
                         help="Provide a revoke reason, see https://tools.ietf.org/html/rfc5280#section-5.3.1")
     args = parser.parse_args()
 
-    # Determine global configuration file
-    if args.config_file:
-        global_config_file = args.config_file
-    else:
-        global_config_file = DEFAULT_CONF_FILE
-
     # Determine domain configuration directory
     if args.config_dir:
         domain_config_dir = args.config_dir
     else:
         domain_config_dir = DEFAULT_CONF_DIR
+
+    # Determine global configuration file
+    if args.config_file:
+        global_config_file = args.config_file
+    else:
+        global_config_file = os.path.join(domain_config_dir, DEFAULT_CONF_FILENAME)
 
     # Runtime configuration: Get from command-line options
     # - work_dir
