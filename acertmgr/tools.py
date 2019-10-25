@@ -159,10 +159,13 @@ def new_ssl_key(path=None, key_algo=None, key_size=None):
         )
         with io.open(path, 'wb') as pem_out:
             pem_out.write(pem)
-        try:
-            os.chmod(path, int("0400", 8))
-        except OSError:
-            log('Could not set file permissions on {0}!'.format(path), warning=True)
+        if hasattr(os, 'chmod'):
+            try:
+                os.chmod(path, int("0400", 8))
+            except OSError:
+                log('Could not set file permissions on {0}!'.format(path), warning=True)
+        else:
+            log('Keyfile permission handling unavailable on this platform', warning=True)
     return private_key
 
 
@@ -186,10 +189,13 @@ def write_pem_file(crt, path, perms=None):
     with io.open(path, "w") as f:
         f.write(convert_cert_to_pem_str(crt))
     if perms:
-        try:
-            os.chmod(path, perms)
-        except OSError:
-            log('Could not set file permissions ({0}) on {1}!'.format(perms, path), warning=True)
+        if hasattr(os, 'chmod'):
+            try:
+                os.chmod(path, perms)
+            except OSError:
+                log('Could not set file permissions ({0}) on {1}!'.format(perms, path), warning=True)
+        else:
+            log('PEM-File permission handling unavailable on this platform', warning=True)
 
 
 # @brief download the issuer ca for a given certificate

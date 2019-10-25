@@ -6,17 +6,23 @@
 # Copyright (c) Rudolf Mayerhofer, 2019.
 # available under the ISC license, see LICENSE
 
-import grp
 import io
 import os
-import pwd
 import stat
 import subprocess
+import sys
 
 from acertmgr import configuration, tools
 from acertmgr.authority import authority
 from acertmgr.modes import challenge_handler
 from acertmgr.tools import log
+
+try:
+    import pwd
+    import grp
+except ImportError:
+    # Warnings will be reported upon usage below
+    pass
 
 
 # @brief fetch new certificate from letsencrypt
@@ -90,18 +96,25 @@ def cert_put(settings):
 
     # set owner and group
     if 'user' in settings or 'group' in settings:
-        try:
-            uid = pwd.getpwnam(settings['user']).pw_uid if 'user' in settings else os.geteuid()
-            gid = grp.getgrnam(settings['group']).gr_gid if 'group' in settings else os.getegid()
-            os.chown(settings['path'], uid, gid)
-        except OSError as e:
-            log('Could not set certificate file ownership', e, warning=True)
+        if 'pwd' in sys.modules and 'grp' in sys.modules and hasattr(os, 'chown') and hasattr(os, 'geteuid') and \
+                hasattr(os, 'getegid'):
+            try:
+                uid = pwd.getpwnam(settings['user']).pw_uid if 'user' in settings else os.geteuid()
+                gid = grp.getgrnam(settings['group']).gr_gid if 'group' in settings else os.getegid()
+                os.chown(settings['path'], uid, gid)
+            except OSError as e:
+                log('Could not set certificate file ownership', e, warning=True)
+        else:
+            log('File user and group handling unavailable on this platform', warning=True)
     # set permissions
     if 'perm' in settings:
-        try:
-            os.chmod(settings['path'], int(settings['perm'], 8))
-        except OSError as e:
-            log('Could not set certificate file permissions', e, warning=True)
+        if hasattr(os, 'chmod'):
+            try:
+                os.chmod(settings['path'], int(settings['perm'], 8))
+            except OSError as e:
+                log('Could not set certificate file permissions', e, warning=True)
+        else:
+            log('File permission handling unavailable on this platform', warning=True)
 
     return settings['action']
 
