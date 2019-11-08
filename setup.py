@@ -72,7 +72,7 @@ setup(
             "dnspython",
         ],
         "yaml": [
-            "yaml",
+            "PyYAML",
         ],
         "idna": [
             "idna",
