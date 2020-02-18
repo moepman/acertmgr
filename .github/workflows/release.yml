@@ -1,0 +1,84 @@
+---
+name: Build (and release)
+on: [ push, pull_request ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install dependencies
+      run: |
+        sudo apt update -qq -y
+        sudo apt install -qq -y build-essential fakeroot git python-all python3-cryptography python3-stdeb python3-wheel twine
+
+    - name: Prepare build process
+      id: buildprep
+      run: |
+        # Fetch tags and determine version
+        git fetch --tags
+        VER="$(python3 setup.py --version)"
+        echo "Version found: $VER"
+        echo "::set-output name=version::$VER"
+
+    - name: Build python package using setuptools (source/wheel)
+      run: |
+        python3 setup.py sdist --formats=gztar
+        python3 setup.py bdist_wheel
+
+    - name: Prepare stdeb build process
+      run: |
+        sed "s/=determine_version()/='$(python3 setup.py --version)'/gi" -i setup.py
+        sed "s@('readme'@('share/doc/python3-acertmgr'@" -i setup.py
+    - name: Build debian package using setuptools and stdeb
+      run: python3 setup.py --command-packages=stdeb.command bdist_deb
+
+    - name: Create a changelog from git log since last non-pre/rc tag
+      run: |
+        # Determine current tag and last non-rc/pre tag
+        CTAG="$(git describe --tags --abbrev=0)"
+        LTAG="$(git tag | grep -B1 ${CTAG} | head -n1)"
+        while echo $LTAG | grep -q 'rc\|pre'; do
+          LTAG="$(git tag | grep -B1 ${LTAG} | head -n1)"
+        done
+        # Write changelog
+        echo "Changes since ${LTAG}:" > changelog.txt
+        git log --format=' * %s' ${LTAG}..${CTAG} >> changelog.txt
+        cat changelog.txt
+
+    - name: Collect files for artifact upload
+      run: |
+        mkdir -v artifacts
+        cp -v changelog.txt artifacts/
+        cp -v dist/*.tar.gz artifacts/
+        cp -v dist/*.whl artifacts/
+        cp -v deb_dist/*.deb artifacts/
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ format('acertmgr_build_{0}', steps.buildprep.outputs.version) }}
+        path: artifacts
+
+    - name: Create new GitHub release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        name: ${{ steps.buildprep.outputs.version }}
+        draft: true
+        prerelease: ${{ contains(github.ref, 'rc') || contains(github.ref, 'pre') }}
+        body_path: changelog.txt
+        files: |
+          artifacts/*.tar.gz
+          artifacts/*.whl
+          artifacts/*.deb
+
+    - name: Create new PyPI release
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      if: "startsWith(github.ref, 'refs/tags/') && (!(contains(github.ref, 'rc') || contains(github.ref, 'pre')))"
+      run: |
+        if [ "$TWINE_USERNAME" != '' -a "$TWINE_PASSWORD" != '' ]; then
+          twine upload dist/*
+        fi
