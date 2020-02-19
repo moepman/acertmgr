@@ -45,49 +45,42 @@ def determine_version():
             return version
 
 
-setup(
-    name="acertmgr",
-    version=determine_version(),
-    author="Markus Hauschild",
-    author_email="moepman@binary-kitchen.de",
-    description="An automated certificate manager using ACME/letsencrypt",
-    license="ISC",
-    keywords="acme letsencrypt",
-    url="https://github.com/moepman/acertmgr",
-    packages=find_packages(),
-    long_description=read('README.md'),
-    long_description_content_type="text/markdown",
-    classifiers=[
-        "Development Status :: 5 - Production/Stable",
-        "Programming Language :: Python",
-        "Environment :: Console",
-        "Topic :: Security :: Cryptography",
-        "License :: OSI Approved :: ISC License (ISCL)",
-    ],
-    install_requires=[
-        "cryptography>=0.6",
-    ],
-    extras_require={
-        "dns": [
-            "dnspython",
+extra_requirements = {
+    "dns": ["dnspython"],
+    "yaml": ["PyYAML"],
+    "idna": ["idna"],
+    "ocsp-must-staple": ["cryptography>=2.1"],
+    "ed25519": ["cryptography>=2.6"],
+}
+
+if __name__ == "__main__":
+    setup(
+        name="acertmgr",
+        version=determine_version(),
+        author="Markus Hauschild",
+        author_email="moepman@binary-kitchen.de",
+        description="An automated certificate manager using ACME/letsencrypt",
+        license="ISC",
+        keywords="acme letsencrypt",
+        url="https://github.com/moepman/acertmgr",
+        packages=find_packages(),
+        long_description=read('README.md'),
+        long_description_content_type="text/markdown",
+        classifiers=[
+            "Development Status :: 5 - Production/Stable",
+            "Programming Language :: Python",
+            "Environment :: Console",
+            "Topic :: Security :: Cryptography",
+            "License :: OSI Approved :: ISC License (ISCL)",
         ],
-        "yaml": [
-            "PyYAML",
+        install_requires=[
+            "cryptography>=0.6",
         ],
-        "idna": [
-            "idna",
-        ],
-        "ocsp-must-staple": [
-            "cryptography>=2.1",
-        ],
-        "ed25519": [
-            "cryptography>=2.6",
-        ],
-    },
-    entry_points={
-        'console_scripts': [
-            'acertmgr=acertmgr:main',
-        ],
-    },
-    data_files=[('readme', ['README.md'])]
-)
+        extras_require=extra_requirements,
+        entry_points={
+            'console_scripts': [
+                'acertmgr=acertmgr:main',
+            ],
+        },
+        data_files=[('readme', ['README.md'])]
+    )
