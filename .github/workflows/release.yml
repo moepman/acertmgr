@@ -17,7 +17,7 @@ jobs:
       id: buildprep
       run: |
         # Fetch tags and determine version
-        git fetch --tags
+        git fetch --tags -f
         VER="$(python3 setup.py --version)"
         echo "Version found: $VER"
         echo "::set-output name=version::$VER"
