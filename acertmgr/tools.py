@@ -375,24 +375,24 @@ def target_is_current(target, file):
 
 # @brief convert domain list to idna representation (if applicable
 def idna_convert(domainlist):
-    if 'idna' in sys.modules and any(ord(c) >= 128 for c in ''.join(domainlist)):
-        domaintranslation = list()
-        for domain in domainlist:
-            if any(ord(c) >= 128 for c in domain):
-                # Translate IDNA domain name from a unicode domain (handle wildcards separately)
-                if domain.startswith('*.'):
-                    idna_domain = "*.{}".format(domain[2:].encode('idna').decode('ascii'))
+    if any(ord(c) >= 128 for c in ''.join(domainlist)):
+        try:
+            domaintranslation = list()
+            for domain in domainlist:
+                if any(ord(c) >= 128 for c in domain):
+                    # Translate IDNA domain name from a unicode domain (handle wildcards separately)
+                    if domain.startswith('*.'):
+                        idna_domain = "*.{}".format(domain[2:].encode('idna').decode('ascii'))
+                    else:
+                        idna_domain = domain.encode('idna').decode('ascii')
+                    result = idna_domain, domain
                 else:
-                    idna_domain = domain.encode('idna').decode('ascii')
-                result = idna_domain, domain
-            else:
-                result = domain, domain
-            domaintranslation.append(result)
-        return domaintranslation
-    else:
-        if any(ord(c) >= 128 for c in ''.join(domainlist)) and 'idna' not in sys.modules:
-            log("Unicode domain(s) found but IDNA names could not be translated due to missing idna module", error=True)
-        return [(x, x) for x in domainlist]
+                    result = domain, domain
+                domaintranslation.append(result)
+            return domaintranslation
+        except Exception as e:
+            log("Unicode domain(s) found but IDNA names could not be translated due to error: {}".format(e), error=True)
+    return [(x, x) for x in domainlist]
 
 
 # @brief validate the OCSP status for a given certificate by the given issuer
