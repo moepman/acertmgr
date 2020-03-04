@@ -10,6 +10,7 @@ import base64
 import datetime
 import io
 import os
+import stat
 import sys
 import traceback
 
@@ -186,6 +187,11 @@ def read_pem_file(path, key=False, csr=False):
 
 # @brief write cert data to PEM formatted file
 def write_pem_file(crt, path, perms=None):
+    if hasattr(os, 'chmod') and os.path.exists(path):
+        try:
+            os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+        except OSError:
+            log('Could not make file ({0}) writable'.format(path), warning=True)
     with io.open(path, "w") as f:
         f.write(convert_cert_to_pem_str(crt))
     if perms:
