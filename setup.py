@@ -50,6 +50,7 @@ extra_requirements = {
     "yaml": ["PyYAML"],
     "idna": ["idna"],
     "ocsp-must-staple": ["cryptography>=2.1"],
+    "ocsp-validation": ["cryptography>=2.4"],
     "ed25519": ["cryptography>=2.6"],
 }
 

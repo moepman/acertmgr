@@ -23,6 +23,11 @@ from cryptography.utils import int_to_bytes
 from cryptography.x509.oid import NameOID, ExtensionOID
 
 try:
+    from cryptography.x509 import ocsp
+except ImportError:
+    pass
+
+try:
     from cryptography.hazmat.primitives.asymmetric import ed25519, ed448
 except ImportError:
     pass
@@ -388,3 +393,48 @@ def idna_convert(domainlist):
         if any(ord(c) >= 128 for c in ''.join(domainlist)) and 'idna' not in sys.modules:
             log("Unicode domain(s) found but IDNA names could not be translated due to missing idna module", error=True)
         return [(x, x) for x in domainlist]
+
+
+# @brief validate the OCSP status for a given certificate by the given issuer
+def is_ocsp_valid(cert, issuer, hash_algo):
+    if hash_algo == 'sha1':
+        algorithm = hashes.SHA1
+    elif hash_algo == 'sha224':
+        algorithm = hashes.SHA224
+    elif hash_algo == 'sha256':
+        algorithm = hashes.SHA256
+    elif hash_algo == 'sha385':
+        algorithm = hashes.SHA384
+    elif hash_algo == 'sha512':
+        algorithm = hashes.SHA512
+    else:
+        log("Invalid hash algorithm '{}' used for OCSP validation. Validation ignored.".format(hash_algo), warning=True)
+        return True
+
+    try:
+        ocsp_urls = []
+        aia = cert.extensions.get_extension_for_oid(ExtensionOID.AUTHORITY_INFORMATION_ACCESS)
+        for data in aia.value:
+            if data.access_method == x509.OID_OCSP:
+                ocsp_urls.append(data.access_location.value)
+
+        # This is a bit of a hack due to validation problems within cryptography (TODO: Check if this is still true)
+        # Correct replacement:  ocsprequest = ocsp.OCSPRequestBuilder().add_certificate(cert, issuer, algorithm).build()
+        ocsprequest = ocsp.OCSPRequestBuilder((cert, issuer, algorithm)).build()
+        ocsprequestdata = ocsprequest.public_bytes(serialization.Encoding.DER)
+        for ocsp_url in ocsp_urls:
+            response = get_url(ocsp_url,
+                               ocsprequestdata,
+                               {
+                                   'Accept': 'application/ocsp-response',
+                                   'Content-Type': 'application/ocsp-request',
+                               })
+            ocspresponsedata = response.read()
+            ocspresponse = ocsp.load_der_ocsp_response(ocspresponsedata)
+            if ocspresponse.response_status == ocsp.OCSPResponseStatus.SUCCESSFUL \
+                    and ocspresponse.certificate_status == ocsp.OCSPCertStatus.REVOKED:
+                return False
+    except Exception as e:
+        log("An exception occurred during OCSP validation (Validation will be ignored): {}".format(e), error=True)
+
+    return True

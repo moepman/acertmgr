@@ -129,7 +129,8 @@ def cert_revoke(cert, configs, fallback_authority, reason=None):
     if not acmeconfig:
         acmeconfig = fallback_authority
         log("No matching authority found to revoke {}: {}, using globalconfig/defaults".format(tools.get_cert_cn(cert),
-            tools.get_cert_domains(cert)), warning=True)
+                                                                                               tools.get_cert_domains(
+                                                                                                   cert)), warning=True)
     acme = authority(acmeconfig)
     acme.register_account()
     acme.revoke_crt(cert, reason)
@@ -157,9 +158,21 @@ def main():
                 cert = None
                 if os.path.isfile(config['cert_file']):
                     cert = tools.read_pem_file(config['cert_file'])
-                if not cert or not tools.is_cert_valid(cert, config['ttl_days']) or (
-                        'force_renew' in runtimeconfig and
-                        all(d in config['domainlist'] for d in runtimeconfig['force_renew'])):
+                validate_ocsp = str(config.get('validate_ocsp')).lower() != 'false'
+                if validate_ocsp and cert and os.path.isfile(config['ca_file']):
+                    try:
+                        issuer = tools.read_pem_file(config['ca_file'])
+                    except Exception as e1:
+                        log("Failed to retrieve issuer from ca file: {}. Trying to download...".format(e1))
+                        try:
+                            issuer = tools.download_issuer_ca(cert)
+                        except Exception as e2:
+                            log("Failed to download issuer for cert file: {}. Cannot validate OCSP.".format(e2))
+                            validate_ocsp = False
+                if not cert or ('force_renew' in runtimeconfig and all(
+                        d in config['domainlist'] for d in runtimeconfig['force_renew'])) \
+                        or not tools.is_cert_valid(cert, config['ttl_days']) \
+                        or (validate_ocsp and not tools.is_ocsp_valid(cert, issuer, config['validate_ocsp'])):
                     cert_get(config)
                     if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
                         superseded.add(cert)
