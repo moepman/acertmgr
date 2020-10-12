@@ -26,19 +26,19 @@ def determine_version():
         return version
     # Derive version from git
     try:
-        output = subprocess.check_output(['git', 'describe', '--tags', '--dirty'], cwd=dir_path) \
-            .decode('utf-8').strip().split('-')
+        output = subprocess.check_output(["git", "describe", "--tags", "--dirty"], cwd=dir_path) \
+            .decode("utf-8").strip().split("-")
         if len(output) == 1:
             return output[0]
         elif len(output) == 2:
             return "{}.dev0".format(output[0])
         else:
-            release = 'dev' if len(output) == 4 and output[3] == 'dirty' else ''
+            release = "dev" if len(output) == 4 and output[3] == "dirty" else ""
             return "{}.{}{}+{}".format(output[0], release, output[1], output[2])
     except subprocess.CalledProcessError:
         try:
-            commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-            status = subprocess.check_output(['git', 'status', '-s']).decode('utf-8').strip()
+            commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+            status = subprocess.check_output(["git", "status", "-s"]).decode("utf-8").strip()
             return "{}.dev0+{}".format(version, commit) if len(status) > 0 else "{}+{}".format(version, commit)
         except subprocess.CalledProcessError:
             # finding the git version has utterly failed, use version.txt
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         keywords="acme letsencrypt",
         url="https://github.com/moepman/acertmgr",
         packages=find_packages(),
-        long_description=read('README.md'),
+        long_description=read("README.md"),
         long_description_content_type="text/markdown",
         classifiers=[
             "Development Status :: 5 - Production/Stable",
@@ -79,9 +79,9 @@ if __name__ == "__main__":
         ],
         extras_require=extra_requirements,
         entry_points={
-            'console_scripts': [
-                'acertmgr=acertmgr:main',
+            "console_scripts": [
+                "acertmgr=acertmgr:main",
             ],
         },
-        data_files=[('readme', ['README.md'])]
+        data_files=[("readme", ["README.md"])],
     )
