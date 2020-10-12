@@ -12,7 +12,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update -qq -y
-        sudo apt install -qq -y build-essential fakeroot git python-all python3-cryptography python3-stdeb python3-wheel twine
+        sudo apt install -qq -y build-essential fakeroot git python-all python3-cryptography python3-pip python3-stdeb python3-wheel twine
+        sudo pip3 install --upgrade setuptools wheel
 
     - name: Prepare build process
       id: buildprep
