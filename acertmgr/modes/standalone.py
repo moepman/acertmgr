@@ -28,10 +28,20 @@ class HTTPServer6(HTTPServer):
 class ChallengeHandler(HTTPChallengeHandler):
     def __init__(self, config):
         HTTPChallengeHandler.__init__(self, config)
-        bind_address = config.get("bind_address", "")
-        port = int(config.get("port", 80))
+        self.bind_address = config.get("bind_address", "")
+        self.port = int(config.get("port", 80))
 
         self.challenges = {}  # Initialize the challenge data dict
+        self.server_thread = None
+        self.server = None
+
+    def create_challenge(self, domain, thumbprint, token):
+        self.challenges[token] = "{0}.{1}".format(token, thumbprint)
+
+    def destroy_challenge(self, domain, thumbprint, token):
+        del self.challenges[token]
+
+    def start_challenge(self, domain, thumbprint, token):
         _self = self
 
         # Custom HTTP request handler
@@ -54,19 +64,11 @@ class ChallengeHandler(HTTPChallengeHandler):
                 self.end_headers()
                 self.wfile.write(value)
 
-        self.server_thread = None
         try:
-            self.server = HTTPServer6((bind_address, port), _HTTPRequestHandler)
+            self.server = HTTPServer6((self.bind_address, self.port), _HTTPRequestHandler)
         except socket.gaierror:
-            self.server = HTTPServer((bind_address, port), _HTTPRequestHandler)
+            self.server = HTTPServer((self.bind_address, self.port), _HTTPRequestHandler)
 
-    def create_challenge(self, domain, thumbprint, token):
-        self.challenges[token] = "{0}.{1}".format(token, thumbprint)
-
-    def destroy_challenge(self, domain, thumbprint, token):
-        del self.challenges[token]
-
-    def start_challenge(self, domain, thumbprint, token):
         def _serve():
             self.server.serve_forever()
 
@@ -78,3 +80,6 @@ class ChallengeHandler(HTTPChallengeHandler):
         if self.server_thread.is_alive():
             self.server.shutdown()
             self.server_thread.join()
+            self.server.server_close()
+            self.server = None
+            self.server_thread = None
