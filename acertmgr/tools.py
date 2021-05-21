@@ -10,6 +10,7 @@ import base64
 import datetime
 import io
 import os
+import re
 import stat
 import sys
 import traceback
@@ -257,15 +258,26 @@ def get_cert_valid_until(cert):
 
 
 # @brief convert certificate to PEM format
-# @param cert certificate object in pyopenssl format
+# @param cert certificate object or a list thereof
 # @return the certificate in PEM format
 def convert_cert_to_pem_str(cert):
-    return cert.public_bytes(serialization.Encoding.PEM).decode('utf8')
+    if not isinstance(cert, list):
+        cert = [cert]
+    result = list()
+    for data in cert:
+        result.append(data.public_bytes(serialization.Encoding.PEM).decode('utf8'))
+    return '\n'.join(result)
 
 
 # @brief load a PEM certificate from str
+# @return a certificate object or a list of objects if multiple are in the string
 def convert_pem_str_to_cert(certdata):
-    return x509.load_pem_x509_certificate(certdata.encode('utf8'), default_backend())
+    certs = re.findall(r'(-----BEGIN CERTIFICATE-----\n[^\-]+\n-----END CERTIFICATE-----)',
+                       certdata, re.DOTALL)
+    result = list()
+    for data in certs:
+        result.append(x509.load_pem_x509_certificate(data.encode('utf8'), default_backend()))
+    return result[0] if len(result) == 1 else result
 
 
 # @brief serialize cert/csr to DER bytes
@@ -410,6 +422,9 @@ def is_ocsp_valid(cert, issuer, hash_algo):
     else:
         log("Invalid hash algorithm '{}' used for OCSP validation. Validation ignored.".format(hash_algo), warning=True)
         return True
+
+    if isinstance(issuer, list):
+        issuer = issuer[0]   # First certificate in the CA chain is the immediate issuer
 
     try:
         ocsp_urls = []

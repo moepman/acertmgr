@@ -260,8 +260,8 @@ class ACMEAuthority(AbstractACMEAuthority):
         if code >= 400:
             raise ValueError("Error downloading certificate chain: {0} {1}".format(code, certificate))
 
-        cert_dict = re.match((r'(?P<cert>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)\n\n'
-                              r'(?P<ca>-----BEGIN CERTIFICATE-----[^\-]+-----END CERTIFICATE-----)?'),
+        cert_dict = re.match((r'(?P<cert>^-----BEGIN CERTIFICATE-----\n[^\-]+\n-----END CERTIFICATE-----)\n*'
+                              r'(?P<ca>-----BEGIN CERTIFICATE-----\n.+\n-----END CERTIFICATE-----)?$'),
                              certificate, re.DOTALL).groupdict()
         cert = tools.convert_pem_str_to_cert(cert_dict['cert'])
         if cert_dict['ca'] is None:
