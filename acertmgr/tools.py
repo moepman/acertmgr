@@ -389,7 +389,7 @@ def idna_convert_single(domain):
     try:
         splitdomain = re.fullmatch('(\*\.)?(.*)', domain) # split wildcard off domain
         idna_domain = (splitdomain.group(1) or '') + splitdomain.group(2).encode('idna').decode('ascii')
-        return idna_domain, domain
+        return idna_domain
     except Exception as e:
         log("Unicode domain found but IDNA names could not be translated due to error: {}".format(e), error=True)
         raise
