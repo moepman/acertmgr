@@ -86,11 +86,11 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
 
     # Basic domain information
     domains, localconfig = entry
+    config['domainlist_human'] = domains.split(' ')
     config['id'] = hashlib.md5(domains.encode('utf-8')).hexdigest()
 
     # Convert unicode to IDNA domains
-    config['domaintranslation'] = idna_convert(domains.split(' '))
-    config['domainlist_idna'] = [x for x, _ in config['domaintranslation']]
+    config['domainlist_idna'] = [x for x, _ in idna_convert(config['domainlist_human']]
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -149,7 +149,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Domain challenge handler configuration
     config['handlers'] = dict()
     handlerconfigs = [x for x in localconfig if 'mode' in x]
-    for domain, original_domain in config['domaintranslation']:
+    for domain_human, domain_idna in zip(config['domainlist_human'], config['domainlist_idna']):
         # Use global config as base handler config
         cfg = copy.deepcopy(globalconfig)
 
@@ -158,11 +158,11 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
         if len(genericfgs) > 0:
             cfg.update(genericfgs[0])
 
-        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == original_domain]
+        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == domain_human]
         if len(specificcfgs) > 0:
             cfg.update(specificcfgs[0])
 
-        config['handlers'][domain] = cfg
+        config['handlers'][domain_idna] = cfg
 
     return config
 
