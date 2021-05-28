@@ -90,7 +90,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
 
     # Convert unicode to IDNA domains
     config['domaintranslation'] = idna_convert(domains.split(' '))
-    config['domainlist'] = [x for x, _ in config['domaintranslation']]
+    config['domainlist_idna'] = [x for x, _ in config['domaintranslation']]
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})

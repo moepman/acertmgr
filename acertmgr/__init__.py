@@ -28,14 +28,14 @@ except ImportError:
 # @brief fetch new certificate from letsencrypt
 # @param settings the domain's configuration options
 def cert_get(settings):
-    log("Getting certificate for %s" % settings['domainlist'])
+    log("Getting certificate for %s" % settings['domainlist_idna'])
 
     acme = authority(settings['authority'])
     acme.register_account()
 
     # create challenge handlers for this certificate
     challenge_handlers = dict()
-    for domain in settings['domainlist']:
+    for domain in settings['domainlist_idna']:
         # Create the challenge handler
         challenge_handlers[domain] = challenge_handler(settings['handlers'][domain])
 
@@ -53,13 +53,13 @@ def cert_get(settings):
         log('Loading CSR from {}'.format(csr_file))
         cr = tools.read_pem_file(csr_file, csr=True)
     else:
-        log('Generating CSR for {}'.format(settings['domainlist']))
+        log('Generating CSR for {}'.format(settings['domainlist_idna']))
         must_staple = str(settings.get('cert_must_staple')).lower() == "true"
-        cr = tools.new_cert_request(settings['domainlist'], key, must_staple)
+        cr = tools.new_cert_request(settings['domainlist_idna'], key, must_staple)
         tools.write_pem_file(cr, csr_file)
 
     # request cert with csr
-    crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
+    crt, ca = acme.get_crt_from_csr(cr, settings['domainlist_idna'], challenge_handlers)
 
     #  if resulting certificate is valid: store in final location
     if tools.is_cert_valid(crt, settings['ttl_days']):
@@ -123,7 +123,7 @@ def cert_revoke(cert, configs, fallback_authority, reason=None):
     domains = set(tools.get_cert_domains(cert))
     acmeconfig = None
     for config in configs:
-        if domains == set(config['domainlist']):
+        if domains == set(config['domainlist_idna']):
             acmeconfig = config['authority']
             break
     if not acmeconfig:
@@ -170,7 +170,7 @@ def main():
                             log("Failed to download issuer for cert file: {}. Cannot validate OCSP.".format(e2))
                             validate_ocsp = False
                 if not cert or ('force_renew' in runtimeconfig and all(
-                        d in config['domainlist'] for d in runtimeconfig['force_renew'])) \
+                        d in config['domainlist_idna'] for d in runtimeconfig['force_renew'])) \
                         or not tools.is_cert_valid(cert, config['ttl_days']) \
                         or (validate_ocsp and not tools.is_ocsp_valid(cert, issuer, config['validate_ocsp'])):
                     cert_get(config)
