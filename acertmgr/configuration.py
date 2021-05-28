@@ -149,8 +149,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Domain challenge handler configuration
     config['handlers'] = dict()
     handlerconfigs = [x for x in localconfig if 'mode' in x]
-    _domaintranslation_dict = {x: y for x, y in config.get('domaintranslation', [])}
-    for domain in config['domainlist']:
+    for domain, original_domain in config['domaintranslation']:
         # Use global config as base handler config
         cfg = copy.deepcopy(globalconfig)
 
@@ -159,9 +158,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
         if len(genericfgs) > 0:
             cfg.update(genericfgs[0])
 
-        # Update handler config with more specific values (use original names for translated unicode domains)
-        _domain = _domaintranslation_dict.get(domain, domain)
-        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == _domain]
+        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == original_domain]
         if len(specificcfgs) > 0:
             cfg.update(specificcfgs[0])
 
