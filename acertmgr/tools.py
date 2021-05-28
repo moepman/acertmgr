@@ -384,28 +384,19 @@ def target_is_current(target, file):
     crt_date = os.path.getmtime(file)
     return target_date >= crt_date
 
+# @brief convert a domain to idna representation
+def idna_convert_single(domain):
+    try:
+        splitdomain = re.fullmatch('(\*\.)?(.*)', domain) # split wildcard off domain
+        idna_domain = (splitdomain.group(1) or '') + splitdomain.group(2).encode('idna').decode('ascii')
+        return idna_domain, domain
+    except Exception as e:
+        log("Unicode domain found but IDNA names could not be translated due to error: {}".format(e), error=True)
+        raise
 
-# @brief convert domain list to idna representation (if applicable
+# @brief convert domain list to idna representation
 def idna_convert(domainlist):
-    if any(ord(c) >= 128 for c in ''.join(domainlist)):
-        try:
-            domaintranslation = list()
-            for domain in domainlist:
-                if any(ord(c) >= 128 for c in domain):
-                    # Translate IDNA domain name from a unicode domain (handle wildcards separately)
-                    if domain.startswith('*.'):
-                        idna_domain = "*.{}".format(domain[2:].encode('idna').decode('ascii'))
-                    else:
-                        idna_domain = domain.encode('idna').decode('ascii')
-                    result = idna_domain, domain
-                else:
-                    result = domain, domain
-                domaintranslation.append(result)
-            return domaintranslation
-        except Exception as e:
-            log("Unicode domain(s) found but IDNA names could not be translated due to error: {}".format(e), error=True)
-    return [(x, x) for x in domainlist]
-
+    return map(idna_convert_single, domainlist)
 
 # @brief validate the OCSP status for a given certificate by the given issuer
 def is_ocsp_valid(cert, issuer, hash_algo):

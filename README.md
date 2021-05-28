@@ -12,14 +12,14 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.5+ should work)
-  * cryptography>=0.6 (usually includes the optional idna module)
+  * cryptography>=0.6
+  * idna (usually included in cryptography)
 
 Optional requirements (to use specified features)
 ------------------------------------------------------
 
   * PyYAML: to parse YAML-formatted configuration files
   * dnspython: used by dns.* challenge handlers
-  * idna: to allow automatic conversion of unicode domain names to their IDNA2008 counterparts
   * cryptography>=2.1: for creating certificates with the OCSP must-staple flag (cert_must_staple)
   * cryptography>=2.6: for usage of Ed25519/Ed448 keys
 
