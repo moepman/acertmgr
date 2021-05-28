@@ -28,7 +28,7 @@ except ImportError:
 # @brief fetch new certificate from letsencrypt
 # @param settings the domain's configuration options
 def cert_get(settings):
-    log("Getting certificate for %s" % settings['domainlist_idna'])
+    log("Getting certificate for %s" % settings['domainlist_human'])
 
     acme = authority(settings['authority'])
     acme.register_account()
@@ -53,7 +53,7 @@ def cert_get(settings):
         log('Loading CSR from {}'.format(csr_file))
         cr = tools.read_pem_file(csr_file, csr=True)
     else:
-        log('Generating CSR for {}'.format(settings['domainlist_idna']))
+        log('Generating CSR for {}'.format(settings['domainlist_human']))
         must_staple = str(settings.get('cert_must_staple')).lower() == "true"
         cr = tools.new_cert_request(settings['domainlist_idna'], key, must_staple)
         tools.write_pem_file(cr, csr_file)
