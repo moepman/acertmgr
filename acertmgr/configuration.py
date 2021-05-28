@@ -90,7 +90,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     config['id'] = hashlib.md5(domains.encode('utf-8')).hexdigest()
 
     # Convert unicode to IDNA domains
-    config['domainlist_idna'] = idna_convert(config['domainlist_human'])
+    config['domainlist_idna'] = list(map(idna_convert, config['domainlist_human']))
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -217,7 +217,7 @@ def load():
 
     # - force-rewew
     if args.force_renew:
-        runtimeconfig['force_renew'] = idna_convert(args.force_renew.split(' '))
+        runtimeconfig['force_renew'] = list(map(idna_convert, args.force_renew.split(' ')))
 
     # - revoke
     if args.revoke:
