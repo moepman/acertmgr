@@ -86,13 +86,11 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
 
     # Basic domain information
     domains, localconfig = entry
-    config['domainlist'] = domains.split(' ')
     config['id'] = hashlib.md5(domains.encode('utf-8')).hexdigest()
 
     # Convert unicode to IDNA domains
-    config['domaintranslation'] = idna_convert(config['domainlist'])
-    if len(config['domaintranslation']) > 0:
-        config['domainlist'] = [x for x, _ in config['domaintranslation']]
+    config['domaintranslation'] = idna_convert(domains.split(' '))
+    config['domainlist'] = [x for x, _ in config['domaintranslation']]
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -222,11 +220,7 @@ def load():
 
     # - force-rewew
     if args.force_renew:
-        domaintranslation = idna_convert(args.force_renew.split(' '))
-        if len(domaintranslation) > 0:
-            runtimeconfig['force_renew'] = [x for x, _ in domaintranslation]
-        else:
-            runtimeconfig['force_renew'] = args.force_renew.split(' ')
+        runtimeconfig['force_renew'] = [x for x, _ in idna_convert(args.force_renew.split(' '))]
 
     # - revoke
     if args.revoke:
