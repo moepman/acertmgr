@@ -86,13 +86,11 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
 
     # Basic domain information
     domains, localconfig = entry
-    config['domainlist'] = domains.split(' ')
+    config['domainlist_human'] = domains.split(' ')
     config['id'] = hashlib.md5(domains.encode('utf-8')).hexdigest()
 
     # Convert unicode to IDNA domains
-    config['domaintranslation'] = idna_convert(config['domainlist'])
-    if len(config['domaintranslation']) > 0:
-        config['domainlist'] = [x for x, _ in config['domaintranslation']]
+    config['domainlist_idna'] = list(map(idna_convert, config['domainlist_human']))
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -151,8 +149,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Domain challenge handler configuration
     config['handlers'] = dict()
     handlerconfigs = [x for x in localconfig if 'mode' in x]
-    _domaintranslation_dict = {x: y for x, y in config.get('domaintranslation', [])}
-    for domain in config['domainlist']:
+    for domain_human, domain_idna in zip(config['domainlist_human'], config['domainlist_idna']):
         # Use global config as base handler config
         cfg = copy.deepcopy(globalconfig)
 
@@ -161,13 +158,11 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
         if len(genericfgs) > 0:
             cfg.update(genericfgs[0])
 
-        # Update handler config with more specific values (use original names for translated unicode domains)
-        _domain = _domaintranslation_dict.get(domain, domain)
-        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == _domain]
+        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == domain_human]
         if len(specificcfgs) > 0:
             cfg.update(specificcfgs[0])
 
-        config['handlers'][domain] = cfg
+        config['handlers'][domain_idna] = cfg
 
     return config
 
@@ -222,11 +217,7 @@ def load():
 
     # - force-rewew
     if args.force_renew:
-        domaintranslation = idna_convert(args.force_renew.split(' '))
-        if len(domaintranslation) > 0:
-            runtimeconfig['force_renew'] = [x for x, _ in domaintranslation]
-        else:
-            runtimeconfig['force_renew'] = args.force_renew.split(' ')
+        runtimeconfig['force_renew'] = list(map(idna_convert, args.force_renew.split(' ')))
 
     # - revoke
     if args.revoke:
