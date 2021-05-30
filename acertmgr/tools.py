@@ -243,8 +243,7 @@ def get_cert_domains(cert):
     if san_cert:
         for d in san_cert.value:
             domains.add(d.value)
-    # Convert IDNA domain to correct representation and return the list
-    return [x for x, _ in idna_convert(domains)]
+    return domains
 
 
 # @brief determine certificate cn
