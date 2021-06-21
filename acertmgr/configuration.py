@@ -90,9 +90,14 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     config['id'] = hashlib.md5(domains.encode('utf-8')).hexdigest()
 
     # Convert unicode to IDNA domains
-    config['domaintranslation'] = idna_convert(config['domainlist'])
-    if len(config['domaintranslation']) > 0:
-        config['domainlist'] = [x for x, _ in config['domaintranslation']]
+    config['domainlist_idna_mapped'] = {}
+    for idx in range(0, len(config['domainlist'])):
+        if any(ord(c) >= 128 for c in config['domainlist'][idx]):
+            domain_human = config['domainlist'][idx]
+            domain_idna = idna_convert(domain_human)
+            if domain_idna != domain_human:
+                config['domainlist'][idx] = domain_idna  # Update domain with idna counterpart
+                config['domainlist_idna_mapped'][domain_idna] = domain_human  # Store original domain for reference
 
     # Action config defaults
     config['defaults'] = globalconfig.get('defaults', {})
@@ -162,8 +167,8 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
             cfg.update(genericfgs[0])
 
         # Update handler config with more specific values (use original names for translated unicode domains)
-        _domain = _domaintranslation_dict.get(domain, domain)
-        specificcfgs = [x for x in handlerconfigs if 'domain' in x and x['domain'] == _domain]
+        specificcfgs = [x for x in handlerconfigs if
+                        'domain' in x and x['domain'] == config['domainlist_idna_mapped'].get(domain, domain)]
         if len(specificcfgs) > 0:
             cfg.update(specificcfgs[0])
 
