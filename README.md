@@ -12,7 +12,7 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.5+ should work)
-  * cryptography>=2.1 (older versions break idna handling)
+  * cryptography>=0.6
 
 Optional requirements (to use specified features)
 ------------------------------------------------------
