@@ -38,6 +38,8 @@ try:
 except ImportError:
     from urllib2 import urlopen, Request  # Python 2
 
+LOG_REPLACEMENTS = {}
+
 
 class InvalidCertificateError(Exception):
     pass
@@ -59,6 +61,9 @@ def log(msg, exc=None, error=False, warning=False):
         prefix = ""
 
     output = prefix + msg
+    for k, v in LOG_REPLACEMENTS.items():
+        output = output.replace(k, v)
+
     if exc:
         _, exc_value, _ = sys.exc_info()
         if not getattr(exc, '__traceback__', None) and exc == exc_value:

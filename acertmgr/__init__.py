@@ -15,7 +15,7 @@ import sys
 from acertmgr import configuration, tools
 from acertmgr.authority import authority
 from acertmgr.modes import challenge_handler
-from acertmgr.tools import log
+from acertmgr.tools import log, LOG_REPLACEMENTS
 
 try:
     import pwd
@@ -139,6 +139,9 @@ def cert_revoke(cert, configs, fallback_authority, reason=None):
 def main():
     # load config
     runtimeconfig, domainconfigs = configuration.load()
+    # register idna-mapped domains as LOG_REPLACEMENTS for better readability of log output
+    LOG_REPLACEMENTS.update({k: "{} [{}]".format(k, v) for k, v in domainconfigs['domainlist_idna_mapped']})
+    # Start processing
     if runtimeconfig.get('mode') == 'revoke':
         # Mode: revoke certificate
         log("Revoking {}".format(runtimeconfig['revoke']))
