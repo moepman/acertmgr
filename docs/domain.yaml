@@ -68,3 +68,12 @@ mail.example.com smtp.example.com webmail.example.net *.intra.example.com:
   perm: '400'
   format: crt,ca
   action: '/etc/init.d/postfix reload'
+
+# this will use a different authority for the following set of domains (buypass.com in this example)
+buypass-example.com *.buypass-example.com:
+- authority: 'https://api.buypass.com/acme'  # Removed trailing /directory from buypass docs for API endpoint
+  mode: dns.nsupdate
+  nsupdate_keyname: buypass
+  nsupdate_keyvalue: Test1234512359==
+  nsupdate_keyalgorithm: HMAC-MD5.SIG-ALG.REG.INT
+
