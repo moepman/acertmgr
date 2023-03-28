@@ -129,7 +129,7 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Update config id if we have a key algorithm set to allow for
     # multiple certs with different algorithms for the same set of domains
     if config.get('key_algorithm', None):
-        config['id'] += "_" + config['key_algorithm']
+        config['id'] += "_" + config['key_algorithm'].lower()
 
     # SSL key length (if key has to be (re-)generated, converted to int)
     update_config_value(config, 'key_length', localconfig, globalconfig, None)
