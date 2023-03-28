@@ -140,7 +140,8 @@ def main():
     # load config
     runtimeconfig, domainconfigs = configuration.load()
     # register idna-mapped domains as LOG_REPLACEMENTS for better readability of log output
-    LOG_REPLACEMENTS.update({k: "{} [{}]".format(k, v) for k, v in domainconfigs['domainlist_idna_mapped']})
+    for domainconfig in domainconfigs:
+        LOG_REPLACEMENTS.update({k: "{} [{}]".format(k, v) for k, v in domainconfig['domainlist_idna_mapped'].items()})
     # Start processing
     if runtimeconfig.get('mode') == 'revoke':
         # Mode: revoke certificate
