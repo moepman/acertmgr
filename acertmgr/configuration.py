@@ -231,9 +231,9 @@ def load():
 
     # - force-rewew
     if args.force_renew:
-        domaintranslation = idna_convert(args.force_renew.split(' '))
+        domaintranslation = [idna_convert(d) for d in args.force_renew.split(' ')]
         if len(domaintranslation) > 0:
-            runtimeconfig['force_renew'] = [x for x, _ in domaintranslation]
+            runtimeconfig['force_renew'] = domaintranslation
         else:
             runtimeconfig['force_renew'] = args.force_renew.split(' ')
 
