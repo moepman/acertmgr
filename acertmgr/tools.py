@@ -144,7 +144,7 @@ def new_ssl_key(path=None, key_algo=None, key_size=None):
             key_size=key_size,
             backend=default_backend()
         )
-    elif key_algo.lower() == 'ec':
+    elif key_algo.lower() == 'ec' or key_algo.lower() == 'ecc':
         if not key_size or key_size == 256:
             key_curve = ec.SECP256R1
         elif key_size == 384:
