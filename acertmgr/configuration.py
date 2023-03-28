@@ -124,6 +124,17 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Use a static cert request
     update_config_value(config, 'csr_static', localconfig, globalconfig, "false")
 
+    # SSL key algorithm (if key has to be (re-)generated)
+    update_config_value(config, 'key_algorithm', localconfig, globalconfig, None)
+    # Update config id if we have a key algorithm set to allow for
+    # multiple certs with different algorithms for the same set of domains
+    if config.get('key_algorithm', None):
+        config['id'] += "_" + config['key_algorithm']
+
+    # SSL key length (if key has to be (re-)generated, converted to int)
+    update_config_value(config, 'key_length', localconfig, globalconfig, None)
+    config['key_length'] = int(config['key_length']) if config['key_length'] else None
+
     # SSL cert request location
     update_config_value(config, 'csr_file', localconfig, globalconfig,
                         os.path.join(config['cert_dir'], "{}.csr".format(config['id'])))
@@ -135,13 +146,6 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # SSL key location (with compatibility to older versions)
     update_config_value(config, 'key_file', localconfig, globalconfig,
                         os.path.join(config['cert_dir'], "{}.key".format(config['id'])))
-
-    # SSL key algorithm (if key has to be (re-)generated)
-    update_config_value(config, 'key_algorithm', localconfig, globalconfig, None)
-
-    # SSL key length (if key has to be (re-)generated, converted to int)
-    update_config_value(config, 'key_length', localconfig, globalconfig, None)
-    config['key_length'] = int(config['key_length']) if config['key_length'] else None
 
     # SSL CA location / use static
     update_config_value(config, 'ca_file', localconfig, globalconfig,
