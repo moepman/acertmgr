@@ -264,15 +264,29 @@ def load():
                     os.path.abspath(domain_config_file) != os.path.abspath(global_config_file):
                 with io.open(domain_config_file) as config_fd:
                     try:
-                        for entry in json.load(config_fd).items():
-                            domainconfigs.append(parse_config_entry(entry, globalconfig, runtimeconfig))
+                        data = json.load(config_fd)
                     except ValueError:
                         import yaml
                         config_fd.seek(0)
-                        for entry in yaml.safe_load(config_fd).items():
-                            domainconfigs.append(parse_config_entry(entry, globalconfig, runtimeconfig))
+                        data = yaml.safe_load(config_fd)
+                    if isinstance(data, list):
+                        # Handle newer config in list format (allows for multiple entries with same domains)
+                        entries = list()
+                        for element in data:
+                            entries += element.items()
+                    else:
+                        # Handle older config format with just one entry per same domain set
+                        entries = data.items()
+                    for entry in entries:
+                        domainconfigs.append(parse_config_entry(entry, globalconfig, runtimeconfig))
 
     # Define a fallback authority from global configuration / defaults
     runtimeconfig['fallback_authority'] = parse_authority([], globalconfig, runtimeconfig)
 
     return runtimeconfig, domainconfigs
+
+
+if __name__ == '__main__':
+    # Simple configuration load test and output
+    from pprint import pprint
+    pprint(load())
