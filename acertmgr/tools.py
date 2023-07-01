@@ -432,7 +432,7 @@ def is_ocsp_valid(cert, issuer, hash_algo):
 
         # This is a bit of a hack due to validation problems within cryptography (TODO: Check if this is still true)
         # Correct replacement:  ocsprequest = ocsp.OCSPRequestBuilder().add_certificate(cert, issuer, algorithm).build()
-        ocsprequest = ocsp.OCSPRequestBuilder((cert, issuer, algorithm)).build()
+        ocsprequest = ocsp.OCSPRequestBuilder((cert, issuer, (algorithm)())).build()
         ocsprequestdata = ocsprequest.public_bytes(serialization.Encoding.DER)
         for ocsp_url in ocsp_urls:
             response = get_url(ocsp_url,
