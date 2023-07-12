@@ -41,7 +41,15 @@ jobs:
         echo "suggests3=$(python3 -c "from setup import extra_requirements; print('\n'.join(['\n'.join(x) for x in extra_requirements.values()]))" | grep -v cryptography | sed 's/PyYAML/yaml/gi' | awk '{ printf("python3-%s, ",$1)};' | awk '{$1=$1; print}')" >> $GITHUB_OUTPUT
 
     - name: Build debian package using setuptools and stdeb
-      run: python3 setup.py --command-packages=stdeb.command sdist_dsc --with-python2=False --with-python3=True --recommends3="${{ steps.stdebprep.outputs.recommends3 }}" --suggests3="${{ steps.stdebprep.outputs.suggests3 }}" bdist_deb
+      run: |
+        # Create debianized source directory
+        python3 setup.py --command-packages=stdeb.command sdist_dsc --with-python2=False --with-python3=True --recommends3="${{ steps.stdebprep.outputs.recommends3 }}" --suggests3="${{ steps.stdebprep.outputs.suggests3 }}"
+        # Enter debianzied source directory (first sub-directory under deb_dist)
+        cd "$(find deb_dist -maxdepth 1 -type d | grep -v 'deb_dist$\|tmp_sdist_dsc' | head -n1)"
+        # Enforce GZIP compressed debian package info for older OS versions
+        echo -e 'override_dh_builddeb:\n\tdh_builddeb -- -Zgzip\n' >> debian/rules
+        # Build deb package
+        DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -rfakeroot -uc -us
 
     - name: Create a changelog from git log since last non-pre/rc tag
       run: |
