@@ -12,7 +12,7 @@ Requirements
 ------------
 
   * Python (2.7+ and 3.5+ should work)
-  * cryptography>=0.6
+  * cryptography>=42.0.0
 
 Optional requirements (to use specified features)
 ------------------------------------------------------

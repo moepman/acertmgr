@@ -92,12 +92,12 @@ def get_url(url, data=None, headers=None):
 # @param ttl_days the minimum amount of days for which the certificate must be valid
 # @return True if certificate is still valid for at least ttl_days, False otherwise
 def is_cert_valid(cert, ttl_days):
-    now = datetime.datetime.now()
-    if cert.not_valid_before > now:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if cert.not_valid_before_utc > now:
         raise InvalidCertificateError("Certificate seems to be from the future")
 
     expiry_limit = now + datetime.timedelta(days=ttl_days)
-    if cert.not_valid_after < expiry_limit:
+    if cert.not_valid_after_utc < expiry_limit:
         return False
 
     return True
