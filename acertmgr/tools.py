@@ -274,14 +274,14 @@ def convert_cert_to_pem_str(cert):
 
 
 # @brief load a PEM certificate from str
-# @return a certificate object or a list of objects if multiple are in the string
+# @return a certificate object or the first certificate if multiple are in the string
 def convert_pem_str_to_cert(certdata):
     certs = re.findall(r'(-----BEGIN CERTIFICATE-----\n[^\-]+\n-----END CERTIFICATE-----)',
                        certdata, re.DOTALL)
     result = list()
     for data in certs:
         result.append(x509.load_pem_x509_certificate(data.encode('utf8'), default_backend()))
-    return result[0] if len(result) == 1 else result
+    return result[0]
 
 
 # @brief serialize cert/csr to DER bytes
