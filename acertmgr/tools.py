@@ -7,13 +7,13 @@
 # available under the ISC license, see LICENSE
 
 import base64
-import datetime
 import io
 import os
 import re
 import stat
 import sys
 import traceback
+from datetime import datetime, timedelta, timezone
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -86,22 +86,40 @@ def log(msg, exc=None, error=False, warning=False):
 def get_url(url, data=None, headers=None):
     return urlopen(Request(url, data=data, headers={} if headers is None else headers))
 
+# @brief get cryptography version stable valid datetime objects
+# @param crt_file string containing the path to the certificate file
+def _cert_validity_utc_dates(cert):
+    try:
+        # cryptography >= 42: timezone-aware
+        nv_before = cert.not_valid_before_utc
+        nv_after = cert.not_valid_after_utc
+    except AttributeError:
+        # Older cryptography: properties are naive UTC datetimes
+        nv_before = cert.not_valid_before
+        nv_after = cert.not_valid_after
+        if nv_before.tzinfo is None:
+            nv_before = nv_before.replace(tzinfo=timezone.utc)
+        if nv_after.tzinfo is None:
+            nv_after = nv_after.replace(tzinfo=timezone.utc)
+    return nv_before, nv_after
 
 # @brief check whether existing certificate is still valid or expiring soon
 # @param crt_file string containing the path to the certificate file
 # @param ttl_days the minimum amount of days for which the certificate must be valid
 # @return True if certificate is still valid for at least ttl_days, False otherwise
 def is_cert_valid(cert, ttl_days):
-    now = datetime.datetime.now()
-    if cert.not_valid_before > now:
-        raise InvalidCertificateError("Certificate seems to be from the future")
+    now = datetime.now(timezone.utc)
 
-    expiry_limit = now + datetime.timedelta(days=ttl_days)
-    if cert.not_valid_after < expiry_limit:
+    expiry_limit = now + timedelta(days=int(ttl_days))
+
+    nv_before, nv_after = _cert_validity_utc_dates(cert)
+
+    if nv_before > now:
+        raise InvalidCertificateError("Certifictae seems to be from the future")
+
+    if nv_after < expiry_limit:
         return False
-
     return True
-
 
 # @brief create a certificate signing request
 # @param names list of domain names the certificate should be valid for
@@ -258,7 +276,8 @@ def get_cert_cn(cert):
 
 # @brief determine certificate end of validity
 def get_cert_valid_until(cert):
-    return cert.not_valid_after
+    _, nv_after = _cert_validity_utc_dates(cert)
+    return nv_after
 
 
 # @brief convert certificate to PEM format
