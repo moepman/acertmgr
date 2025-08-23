@@ -12,8 +12,9 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update -qq -y
-        sudo apt install -qq -y build-essential fakeroot git python-all python3-cryptography python3-pip python3-stdeb python3-wheel twine dh-python
-        sudo pip3 install --upgrade setuptools wheel
+        sudo apt install -qq -y build-essential fakeroot git python3 python3-cryptography python3-pip python3-stdeb twine dh-python
+        # Install wheel via pip to avoid conflicts with system packages
+        python3 -m pip install --upgrade pip wheel
 
     - name: Prepare build process
       id: buildprep
@@ -37,7 +38,7 @@ jobs:
         sed "s@('readme'@('share/doc/python3-acertmgr'@" -i setup.py
         # Determine recommended dependencies for deb package
         echo "recommends3=$(echo "python3-pkg-resources")" >> $GITHUB_OUTPUT
-        # Find optional dependencies to suggest in deb package       
+        # Find optional dependencies to suggest in deb package
         echo "suggests3=$(python3 -c "from setup import extra_requirements; print('\n'.join(['\n'.join(x) for x in extra_requirements.values()]))" | grep -v cryptography | sed 's/PyYAML/yaml/gi' | awk '{ printf("python3-%s, ",$1)};' | awk '{$1=$1; print}')" >> $GITHUB_OUTPUT
 
     - name: Build debian package using setuptools and stdeb
@@ -73,7 +74,7 @@ jobs:
         cp -v deb_dist/*.deb artifacts/
 
     - name: Upload build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ format('acertmgr_build_{0}', steps.buildprep.outputs.version) }}
         path: artifacts
