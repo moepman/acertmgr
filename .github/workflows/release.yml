@@ -12,9 +12,9 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update -qq -y
-        sudo apt install -qq -y build-essential fakeroot git python3 python3-cryptography python3-pip python3-stdeb twine dh-python
-        # Install wheel via pip to avoid conflicts with system packages
-        python3 -m pip install --upgrade pip wheel
+        sudo apt install -qq -y build-essential fakeroot git python3 python3-cryptography python3-pip twine dh-python
+        # Install wheel and stdeb via pip to avoid conflicts with system packages and ensure compatibility
+        python3 -m pip install --upgrade pip wheel stdeb
 
     - name: Prepare build process
       id: buildprep
