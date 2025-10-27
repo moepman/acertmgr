@@ -8,6 +8,7 @@
 
 import base64
 import io
+import math
 import os
 import re
 import stat
@@ -105,21 +106,21 @@ def _cert_validity_utc_dates(cert):
 
 # @brief check whether existing certificate is still valid or expiring soon
 # @param crt_file string containing the path to the certificate file
-# @param ttl_days the minimum amount of days for which the certificate must be valid
+# @param ttl_days the minimum amount of days for which the certificate must be valid 
+#        or if between 0 and 1 a fraction of the certificates total lifetime
 # @return True if certificate is still valid for at least ttl_days, False otherwise
 def is_cert_valid(cert, ttl_days):
     now = datetime.now(timezone.utc)
-
-    expiry_limit = now + timedelta(days=int(ttl_days))
-
     nv_before, nv_after = _cert_validity_utc_dates(cert)
-
     if nv_before > now:
-        raise InvalidCertificateError("Certifictae seems to be from the future")
+        raise InvalidCertificateError("Certificate seems to be from the future")
+    elif ttl_days > 0 and ttl_days < 1:
+        # If ttl_days is between 0 and 1 then it denominates a fraction of the total cert lifetime
+        cert_lifetime = math.ceil(timedelta(nv_after - nv_before).total_seconds() / 86400)
+        # Set ttl_days to the real value in days based on certificate lifetime rounded up
+        ttl_days = float(cert_lifetime) * ttl_days
+    return (nv_after - now) > timedelta(days=ttl_days)
 
-    if nv_after < expiry_limit:
-        return False
-    return True
 
 # @brief create a certificate signing request
 # @param names list of domain names the certificate should be valid for
