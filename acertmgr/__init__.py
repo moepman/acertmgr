@@ -63,7 +63,7 @@ def cert_get(settings):
 
     #  if resulting certificate is valid: store in final location
     if tools.is_cert_valid(crt, settings['ttl_days']):
-        log("Certificate '{}' renewed and valid until {}".format(tools.get_cert_cn(crt),
+        log("Certificate '{}' renewed and valid until {}".format(tools.get_cert_identifier(crt),
                                                                  tools.get_cert_valid_until(crt)))
         tools.write_pem_file(crt, settings['cert_file'], stat.S_IREAD)
         if (not str(settings.get('ca_static')).lower() == 'true' or not os.path.exists(settings['ca_file'])) \
@@ -128,7 +128,7 @@ def cert_revoke(cert, configs, fallback_authority, reason=None):
             break
     if not acmeconfig:
         acmeconfig = fallback_authority
-        log("No matching authority found to revoke {}: {}, using globalconfig/defaults".format(tools.get_cert_cn(cert),
+        log("No matching authority found to revoke {}: {}, using globalconfig/defaults".format(tools.get_cert_identifier(cert),
                                                                                                tools.get_cert_domains(
                                                                                                    cert)), warning=True)
     acme = authority(acmeconfig)
@@ -227,7 +227,7 @@ def main():
             for superseded_cert in superseded:
                 try:
                     log("Revoking '{}' valid until {} as superseded".format(
-                        tools.get_cert_cn(superseded_cert),
+                        tools.get_cert_identifier(superseded_cert),
                         tools.get_cert_valid_until(superseded_cert)))
                     cert_revoke(superseded_cert, domainconfigs, runtimeconfig['fallback_authority'], reason=4)
                 except Exception as e:

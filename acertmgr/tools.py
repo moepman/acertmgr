@@ -263,7 +263,9 @@ def download_issuer_ca(cert):
 def get_cert_domains(cert):
     san_cert = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
     domains = set()
-    domains.add(cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value)
+    cns = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    if len(cns) > 0:
+        domains.add(cns[0].value)
     if san_cert:
         for d in san_cert.value:
             domains.add(d.value)
@@ -271,8 +273,9 @@ def get_cert_domains(cert):
 
 
 # @brief determine certificate cn
-def get_cert_cn(cert):
-    return "CN={}".format(cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value)
+def get_cert_identifier(cert):
+    # Return the first domain as the certificates identifier (usually the CN, see above)
+    return "{}".format(list(get_cert_domains(cert))[0])
 
 
 # @brief determine certificate end of validity
