@@ -125,6 +125,13 @@ class ACMEAuthority(AbstractACMEAuthority):
     def _request_acme_endpoint(self, request, payload=None, protected=None, raw_result=False):
         return self._request_acme_url(self.directory[request], payload, protected, raw_result)
 
+    # @brief check if a given cert_profile is valid for this ACMEAuthority
+    def _is_valid_cert_profile(self, profile):
+        return (profile is not None
+                and 'meta' in self.directory
+                and 'profiles' in self.directory['meta']
+                and profile in self.directory['meta']['profiles'])
+
     # @brief register an account over ACME
     def register_account(self):
         if self.account_id:
@@ -153,13 +160,19 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param challenge_handlers a dict containing challenge for all given domains
     # @return the certificate and corresponding ca as a tuple
     # @note algorithm and parts of the code are from acme-tiny
-    def get_crt_from_csr(self, csr, domains, challenge_handlers):
+    def get_crt_from_csr(self, csr, domains, challenge_handlers, cert_profile=None):
         account_thumbprint = tools.bytes_to_base64url(
             tools.hash_of_str(json.dumps(self.account_protected['jwk'], sort_keys=True, separators=(',', ':'))))
 
         log("Ordering certificate for {}".format(domains))
         identifiers = [{'type': 'dns', 'value': domain} for domain in domains]
-        code, order, headers = self._request_acme_endpoint('newOrder', {'identifiers': identifiers})
+        payload = {'identifiers': identifiers}
+        if cert_profile is not None:
+            if self._is_valid_cert_profile(cert_profile):
+                payload['profile'] = cert_profile
+            else:
+                log("Ignoring invalid certificate profile for this authority: {}".format(cert_profile))
+        code, order, headers = self._request_acme_endpoint('newOrder', payload)
         if code >= 400:
             raise ValueError("Error with certificate order: {0} {1}".format(code, order))
 

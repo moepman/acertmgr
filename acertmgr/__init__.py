@@ -59,7 +59,7 @@ def cert_get(settings):
         tools.write_pem_file(cr, csr_file)
 
     # request cert with csr
-    crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers)
+    crt, ca = acme.get_crt_from_csr(cr, settings['domainlist'], challenge_handlers, settings.get('cert_profile', None))
 
     #  if resulting certificate is valid: store in final location
     if tools.is_cert_valid(crt, settings['ttl_days']):

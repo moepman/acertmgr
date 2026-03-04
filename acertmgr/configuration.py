@@ -121,6 +121,9 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # Whether to include request for OCSP must-staple in the certificate
     update_config_value(config, 'cert_must_staple', localconfig, globalconfig, "false")
 
+    # Use a specific certificate profile that the authority provides
+    update_config_value(config, 'cert_profile', localconfig, globalconfig, None)
+
     # Use a static cert request
     update_config_value(config, 'csr_static', localconfig, globalconfig, "false")
 
