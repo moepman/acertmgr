@@ -116,7 +116,7 @@ def is_cert_valid(cert, ttl_days):
         raise InvalidCertificateError("Certificate seems to be from the future")
     elif ttl_days > 0 and ttl_days < 1:
         # If ttl_days is between 0 and 1 then it denominates a fraction of the total cert lifetime
-        cert_lifetime = math.ceil(timedelta(nv_after - nv_before).total_seconds() / 86400)
+        cert_lifetime = math.ceil((nv_after - nv_before).total_seconds() / 86400)
         # Set ttl_days to the real value in days based on certificate lifetime rounded up
         ttl_days = float(cert_lifetime) * ttl_days
     return (nv_after - now) > timedelta(days=ttl_days)
