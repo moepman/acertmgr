@@ -136,6 +136,22 @@ def cert_revoke(cert, configs, fallback_authority, reason=None):
     acme.revoke_crt(cert, reason)
 
 
+def cert_check_ari_for_renewal(cert, issuer, configs, fallback_authority):
+    domains = set(tools.get_cert_domains(cert))
+    acmeconfig = None
+    for config in configs:
+        if domains == set(config['domainlist']):
+            acmeconfig = config['authority']
+            break
+    if not acmeconfig:
+        acmeconfig = fallback_authority
+        log("No matching authority found to revoke {}: {}, using globalconfig/defaults".format(tools.get_cert_identifier(cert),
+                                                                                               tools.get_cert_domains(
+                                                                                                   cert)), warning=True)
+    acme = authority(acmeconfig)
+    return acme.check_ari_for_renewal(cert, issuer)
+
+
 def main():
     # load config
     runtimeconfig, domainconfigs = configuration.load()
@@ -159,11 +175,13 @@ def main():
         # check certificate validity and obtain/renew certificates if needed
         for config in domainconfigs:
             try:
+                # Load certificate if it already exists
                 cert = None
                 if os.path.isfile(config['cert_file']):
                     cert = tools.read_pem_file(config['cert_file'])
-                validate_ocsp = str(config.get('validate_ocsp')).lower() != 'false'
-                if validate_ocsp and cert and os.path.isfile(config['ca_file']):
+                # Load CA data necessary for issuer validation with OCSP and ARI
+                issuer = None
+                if cert and os.path.isfile(config['ca_file']):
                     try:
                         issuer = tools.read_pem_file(config['ca_file'])
                     except Exception as e1:
@@ -172,11 +190,18 @@ def main():
                             issuer = tools.download_issuer_ca(cert)
                         except Exception as e2:
                             log("Failed to download issuer for cert file: {}. Cannot validate OCSP.".format(e2))
-                            validate_ocsp = False
-                if not cert or ('force_renew' in runtimeconfig and all(
-                        d in config['domainlist'] for d in runtimeconfig['force_renew'])) \
-                        or not tools.is_cert_valid(cert, config['ttl_days']) \
-                        or (validate_ocsp and not tools.is_ocsp_valid(cert, issuer, config['validate_ocsp'])):
+                if (not cert
+                    or ('force_renew' in runtimeconfig
+                        and all(d in config['domainlist'] for d in runtimeconfig['force_renew'])
+                        )
+                    or not tools.is_cert_valid(cert, config['ttl_days'])
+                    or (str(config.get('validate_ocsp')).lower() != 'false'
+                        and issuer and not tools.is_ocsp_valid(cert, issuer, config['validate_ocsp'])
+                        )
+                    or (issuer
+                        and cert_check_ari_for_renewal(cert, issuer, domainconfigs, runtimeconfig['fallback_authority'])
+                        )
+                ):
                     cert_get(config)
                     if str(config.get('cert_revoke_superseded')).lower() == 'true' and cert:
                         superseded.add(cert)
