@@ -284,6 +284,22 @@ def get_cert_valid_until(cert):
     return nv_after
 
 
+# @brief determine certificate serial number as bytes
+def get_cert_serialnumber_bytes(cert):
+    serial = cert.serial_number
+    byte_count = (serial.bit_length() + 7) // 8  # Round up to nearest byte
+    return serial.to_bytes(byte_count)
+
+
+# @brief determine issuer certificate AKI bytes
+def get_issuer_cert_aki_bytes(issuer_cert):
+    if isinstance(issuer_cert, list):
+        # Take the first certificate from the list as the issuer
+        issuer_cert = issuer_cert[0]
+    # Determine necessary AKI bytes
+    ski = issuer_cert.extensions.get_extension_for_class(x509.SubjectKeyIdentifier)
+    return x509.AuthorityKeyIdentifier.from_issuer_subject_key_identifier(ski.value).key_identifier
+
 # @brief convert certificate to PEM format
 # @param cert certificate object or a list thereof
 # @return the certificate in PEM format

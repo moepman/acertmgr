@@ -32,3 +32,10 @@ class ACMEAuthority:
     # @param reason (int) optional certificate revoke reason (see https://tools.ietf.org/html/rfc5280#section-5.3.1)
     def revoke_crt(self, crt, reason=None):
         raise NotImplementedError
+
+    # @brief check if the given certificate should be renewed according to it's RFC9773 data
+    # @param crt certificate to check
+    # @param issuer certificate necessary for correct AKI data
+    # @return True if the certificate should be renewed, False otherwise
+    def check_ari_for_renewal(self, crt, issuer):
+        raise False  # Do not mark for renewal if this is not implemented properly (use default renewal checks instead)

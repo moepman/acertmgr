@@ -9,6 +9,7 @@ import copy
 import json
 import re
 import time
+from datetime import datetime
 
 from acertmgr import tools
 from acertmgr.authority.acme import ACMEAuthority as AbstractACMEAuthority
@@ -296,3 +297,24 @@ class ACMEAuthority(AbstractACMEAuthority):
             log("Revocation successful")
         else:
             raise ValueError("Revocation failed: {}".format(result))
+
+    # @brief check if the given certificate should be renewed according to it's RFC9773 data
+    # @param crt certificate to check
+    # @param issuer certificate necessary for correct AKI data
+    # @return True if the certificate should be renewed, False otherwise
+    def check_ari_for_renewal(self, crt, issuer):
+        try:
+            sn = tools.get_cert_serialnumber_bytes(crt)
+            aki = tools.get_issuer_cert_aki_bytes(issuer)
+            url = "{}/{}.{}".format(self.directory['renewalInfo'],
+                                    tools.bytes_to_base64url(aki),
+                                    tools.bytes_to_base64url(sn))
+            code, result, _ = self._request_url(url)
+            if code >= 400:
+                return False # Do not mark for renewal on error response
+            start = datetime.fromisoformat(result['suggestedWindow']['start'])
+            return datetime.now().timestamp() >= start.timestamp()  # True if window is reached or exceeded
+        except Exception as e:
+            log("Failed to check ARI for {} due to exception: {} - {}".format(tools.get_cert_identifier(crt),
+                type(e), e), e)
+            return False  # Do not mark for renewal in case anything has errored here
