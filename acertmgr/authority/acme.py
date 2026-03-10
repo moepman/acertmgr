@@ -38,4 +38,4 @@ class ACMEAuthority:
     # @param issuer certificate necessary for correct AKI data
     # @return True if the certificate should be renewed, False otherwise
     def check_ari_for_renewal(self, crt, issuer):
-        raise False  # Do not mark for renewal if this is not implemented properly (use default renewal checks instead)
+        return False  # Do not mark for renewal if this is not implemented properly (use default renewal checks instead)
