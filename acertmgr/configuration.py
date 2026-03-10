@@ -19,6 +19,7 @@ from acertmgr.tools import idna_convert
 DEFAULT_CONF_DIR = "/etc/acertmgr"
 DEFAULT_CONF_FILENAME = "acertmgr.conf"
 DEFAULT_TTL = 0.33333  # percent of the certificates total lifetime
+DEFAULT_VALIDATE_ARI = "true"
 DEFAULT_VALIDATE_OCSP = "sha1" # mandated by RFC5019
 DEFAULT_API = "v2"
 DEFAULT_AUTHORITY = "https://acme-v02.api.letsencrypt.org"
@@ -111,6 +112,9 @@ def parse_config_entry(entry, globalconfig, runtimeconfig):
     # TTL days
     update_config_value(config, 'ttl_days', localconfig, globalconfig, DEFAULT_TTL)
     config['ttl_days'] = float(config['ttl_days'])
+
+    # Validate ARI on certificate verification
+    update_config_value(config, 'validate_ari', localconfig, globalconfig, DEFAULT_VALIDATE_ARI)
 
     # Validate OCSP on certificate verification
     update_config_value(config, 'validate_ocsp', localconfig, globalconfig, DEFAULT_VALIDATE_OCSP)

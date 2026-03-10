@@ -198,7 +198,7 @@ def main():
                     or (str(config.get('validate_ocsp')).lower() != 'false'
                         and issuer and not tools.is_ocsp_valid(cert, issuer, config['validate_ocsp'])
                         )
-                    or (issuer
+                    or (str(config.get('validate_ari')).lower() != 'false' and issuer
                         and cert_check_ari_for_renewal(cert, issuer, domainconfigs, runtimeconfig['fallback_authority'])
                         )
                 ):
