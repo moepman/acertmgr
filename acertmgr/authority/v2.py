@@ -303,6 +303,8 @@ class ACMEAuthority(AbstractACMEAuthority):
     # @param issuer certificate necessary for correct AKI data
     # @return True if the certificate should be renewed, False otherwise
     def check_ari_for_renewal(self, crt, issuer):
+        if 'renewalInfo' not in self.directory:
+            return False
         try:
             sn = tools.get_cert_serialnumber_bytes(crt)
             aki = tools.get_issuer_cert_aki_bytes(issuer)
