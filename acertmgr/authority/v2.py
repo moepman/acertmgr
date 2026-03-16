@@ -151,9 +151,10 @@ class ACMEAuthority(AbstractACMEAuthority):
             self.account_id = headers['Location']
             if 'meta' in self.directory and 'termsOfService' in self.directory['meta']:
                 log("ToS at {} have been accepted.".format(self.directory['meta']['termsOfService']))
-            log("Account registered and valid on {}.".format(self.ca))
+            log("Account ({}) registered and valid on {}.".format(self.config['account_key'], self.ca))
         else:
-            raise ValueError("Error registering account: {0} {1}".format(code, result))
+            raise ValueError("Error registering account ({}): {} {}".format(self.config['account_key'],
+                                                                           code, result))
 
     # @brief function to fetch certificate using ACME
     # @param csr the certificate signing request in pyopenssl format
