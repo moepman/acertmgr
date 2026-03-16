@@ -73,15 +73,16 @@ class ACMEAuthority(AbstractACMEAuthority):
             "agreement": self.agreement,
         })
         if code == 201:
-            log("Registered!")
+            log("Account ({}) successfully registered.".format(self.config['account_key']))
             self.registered_account = True
             return True
         elif code == 409:
-            log("Already registered!")
+            log("Account ({}) is already registered.".format(self.config['account_key']))
             self.registered_account = True
             return False
         else:
-            raise ValueError("Error registering: {0} {1}".format(code, result))
+            raise ValueError("Error registering account ({}): {} {}".format(self.config['account_key'],
+                                                                           code, result))
 
     # @brief function to fetch certificate using ACME
     # @param csr the certificate signing request in pyopenssl format
