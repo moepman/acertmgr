@@ -167,8 +167,9 @@ class ACMEAuthority(AbstractACMEAuthority):
             tools.hash_of_str(json.dumps(self.account_protected['jwk'], sort_keys=True, separators=(',', ':'))))
 
         log("Ordering certificate for {}".format(domains))
-        identifiers = [{'type': 'dns', 'value': domain} for domain in domains]
-        payload = {'identifiers': identifiers}
+        payload = {'identifiers': [
+            {'type': 'ip' if tools.is_valid_ipaddress(d) else 'dns', 'value': d} for d in domains
+        ]}
         if cert_profile is not None:
             if self._is_valid_cert_profile(cert_profile):
                 payload['profile'] = cert_profile
