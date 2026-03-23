@@ -11,6 +11,7 @@ import io
 import math
 import os
 import re
+import socket
 import stat
 import sys
 import traceback
@@ -128,14 +129,17 @@ def is_cert_valid(cert, ttl_days):
 # @param must_staple whether or not the certificate should include the OCSP must-staple flag
 # @return the CSR in pyopenssl format
 def new_cert_request(names, key, must_staple=False):
-    primary_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,
-                                                 names[0].decode('utf-8') if getattr(names[0], 'decode', None) else
-                                                 names[0])])
-    all_names = x509.SubjectAlternativeName(
-        [x509.DNSName(name.decode('utf-8') if getattr(name, 'decode', None) else name) for name in names])
+    # Decode strings if necessary to ensure we have a str list
+    names = [n.decode('utf-8') if getattr(n, 'decode', None) else n for n in names]
+    # Use first name in the list for CN
+    primary_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, names[0])])
+    # Add all names as SAN entries in order of list
+    san_entries = x509.SubjectAlternativeName(
+        [x509.IPAddress(n) if is_valid_ipaddress(n) else x509.DNSName(n) for n in names]
+    )
     req = x509.CertificateSigningRequestBuilder()
     req = req.subject_name(primary_name)
-    req = req.add_extension(all_names, critical=False)
+    req = req.add_extension(san_entries, critical=False)
     if must_staple:
         if getattr(x509, 'TLSFeature', None):
             req = req.add_extension(x509.TLSFeature(features=[x509.TLSFeatureType.status_request]), critical=False)
@@ -489,3 +493,25 @@ def is_ocsp_valid(cert, issuer, hash_algo):
         log("An exception occurred during OCSP validation (Validation will be ignored): {}".format(e), error=True)
 
     return True
+
+
+# @brief check if a given string is a valid ip (v6 or v4) address
+def is_valid_ipaddress(value):
+    # Try to parse IPv6 address if there is a : in the value
+    if ':' in value:
+        try:
+            # Check if IPv6 address
+            socket.inet_pton(socket.AF_INET6, value)
+            return True  # Valid IPv6 address
+        except socket.error:
+            return False # Not a valid IPv6 address
+    # Try to parse IPv4 address if all parts delimited by a . are numeric
+    elif all(str(x).isnumeric() for x in value.split('.')):
+        try:
+            # Check if IPv4 address
+            socket.inet_pton(socket.AF_INET, value)
+            return True  # Valid IPv4 address
+        except socket.error:
+            return False  # Not a valid IPv4 address
+    else:
+        return False # Not an IPv6 or IPv4 address
